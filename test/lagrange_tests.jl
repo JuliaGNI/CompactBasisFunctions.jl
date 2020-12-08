@@ -15,6 +15,22 @@ import ContinuumArrays: apply, MulQuasiMatrix
     @test degree(l) == 1
     @test eachnode(l) == 1:2
 
+    y = rand(5)
+
+    z1 =      [ l[y[i], j] for i in eachindex(y), j in eachnode(l) ]
+    z2 = hcat([ l[y[i], :] for i in eachindex(y)]...)'
+    z3 = hcat([ l[y,    j] for j in eachnode(l) ]...)
+    z4 =        l[y,    :]
+
+    @test z1 == z2 == z3 == z4
+
+    z1 =      [ (d*l)[y[i], j] for i in eachindex(y), j in eachnode(l) ]
+    z2 = hcat([ (d*l)[y[i], :] for i in eachindex(y)]...)'
+    z3 = hcat([ (d*l)[y,    j] for j in eachnode(l) ]...)
+    z4 =        (d*l)[y,    :]
+
+    @test z1 == z2 == z3 == z4
+
 
     @test l(0.0, 1) == 1.0
     @test l(0.5, 1) == 0.5
