@@ -9,7 +9,7 @@ function vandermonde_matrix(x::AbstractVector{T}) where {T}
 		V[:,i] .= x.^(i-1)
 	end
 
-	V
+	return V
 end
 
 function vandermonde_matrix_inverse(x::AbstractVector{T}) where {T}
@@ -17,7 +17,6 @@ function vandermonde_matrix_inverse(x::AbstractVector{T}) where {T}
 
     local L::Matrix{T} = zeros(n,n)
     local U::Matrix{T} = Matrix{T}(I, n, n)
-    local V::Matrix{T}
 
     L[1,1] = 1
     for i in 2:n
@@ -43,5 +42,5 @@ function vandermonde_matrix_inverse(x::AbstractVector{T}) where {T}
         end
     end
 
-    V = *(U,L)
+    return *(U,L)
 end
