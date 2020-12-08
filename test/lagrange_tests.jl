@@ -11,6 +11,7 @@ import ContinuumArrays: apply, MulQuasiMatrix
 
     @test grid(l) == x
     @test nodes(l) == x
+    @test order(l) == 2
     @test nnodes(l) == 2
     @test nbasis(l) == 2
     @test degree(l) == 1
@@ -33,7 +34,7 @@ import ContinuumArrays: apply, MulQuasiMatrix
     @test !isequal(l, l2)
     @test !isequal(l, l3)
 
-    
+
     @test l != LagrangeGauß(2)
     @test l == LagrangeLobatto(2)
 
