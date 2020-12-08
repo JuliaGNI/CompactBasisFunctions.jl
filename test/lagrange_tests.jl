@@ -33,6 +33,10 @@ import ContinuumArrays: apply, MulQuasiMatrix
     @test !isequal(l, l2)
     @test !isequal(l, l3)
 
+    
+    @test l != LagrangeGauß(2)
+    @test l == LagrangeLobatto(2)
+
 
     y = rand(5)
 

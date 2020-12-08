@@ -14,7 +14,8 @@ module CompactBasisFunctions
 
     include("basis.jl")
 
-    export Lagrange, LagrangeDerivative
+    export Lagrange, LagrangeDerivative,
+           LagrangeGauß, LagrangeLobatto
 
     include("lagrange.jl")
 
