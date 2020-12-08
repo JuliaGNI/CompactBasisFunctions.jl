@@ -9,11 +9,30 @@ import ContinuumArrays: apply, MulQuasiMatrix
     @test apply(*,d,l) isa LagrangeDerivative
     @test d*l isa LagrangeDerivative
 
+    @test grid(l) == x
     @test nodes(l) == x
     @test nnodes(l) == 2
     @test nbasis(l) == 2
     @test degree(l) == 1
     @test eachnode(l) == 1:2
+
+
+    l1 = Lagrange([0.0,  1.0 ])
+    l2 = Lagrange([0,    1   ])
+    l3 = Lagrange([0.25, 0.75])
+
+    @test hash(l) == hash(l1)
+    @test hash(l) == hash(l2)
+    @test hash(l) != hash(l3)
+
+    @test l == l1
+    @test l == l2
+    @test l != l3
+
+    @test  isequal(l, l1)
+    @test !isequal(l, l2)
+    @test !isequal(l, l3)
+
 
     y = rand(5)
 

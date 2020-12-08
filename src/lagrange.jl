@@ -67,7 +67,6 @@ Base.getindex(L::Lagrange, X::AbstractVector,  ::Colon) = [b(x) for x in X, b in
 function _eval_derivative(L::Lagrange{LT}, x::DT, j::Int) where {LT,DT}
     local T = promote_type(LT,DT)
     local d::T = 0
-    local z::T
 
     for l in eachnode(L)
         if l ≠ j
