@@ -1,6 +1,5 @@
 using CompactBasisFunctions
 using Test
 
-@testset "CompactBasisFunctions.jl" begin
-    # Write your tests here.
-end
+include("basis_tests.jl")
+include("lagrange_tests.jl")
