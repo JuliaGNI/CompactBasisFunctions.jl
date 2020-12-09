@@ -19,7 +19,7 @@ Bernstein basis on the interval [0..1].
 """
 struct Bernstein{T, BT} <: Basis{T}
     b::BT
-    n::Integer
+    n::Int
 
     function Bernstein{T}(n::Integer) where {T}
         p = n-1
