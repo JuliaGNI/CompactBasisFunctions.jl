@@ -1,20 +1,12 @@
 
 using LinearAlgebra
 
-function vandermonde_matrix(x::AbstractVector{T}) where {T}
+vandermonde_matrix(x::Vector) = hcat([x.^(i-1) for i in 1:length(x)]...)
+vandermonde_matrix(x::AbstractVector{T}) where {T} = vandermonde_matrix(collect(x))
+
+
+function vandermonde_matrix_inverse(x::Vector{T}) where {T}
     local n = length(x)
-	local V = Array{T,2}(undef, n, n)
-
-	for i in 1:n
-		V[:,i] .= x.^(i-1)
-	end
-
-	return V
-end
-
-function vandermonde_matrix_inverse(x::AbstractVector{T}) where {T}
-    local n = length(x)
-
     local L::Matrix{T} = zeros(n,n)
     local U::Matrix{T} = Matrix{T}(I, n, n)
 
@@ -44,3 +36,5 @@ function vandermonde_matrix_inverse(x::AbstractVector{T}) where {T}
 
     return *(U,L)
 end
+
+vandermonde_matrix_inverse(x::AbstractVector{T}) where {T} = vandermonde_matrix_inverse(collect(x))
