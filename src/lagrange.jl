@@ -45,14 +45,16 @@ LagrangeLobatto(n) = Lagrange(LobattoLegendreQuadrature(n).nodes)
 
 (L::Lagrange)(x::Number, j::Integer) = L.b[j](x)
 
+basis(L::Lagrange) = L.b
 nodes(L::Lagrange) = L.x
+nbasis(L::Lagrange) = length(basis(L))
 nnodes(L::Lagrange) = length(nodes(L))
-nbasis(L::Lagrange) = nnodes(L)
+eachbasis(L::Lagrange) = eachindex(basis(L))
+eachnode(L::Lagrange)  = eachindex(nodes(L))
+order(L::Lagrange)  = nnodes(L)
 degree(L::Lagrange) = nnodes(L) - 1
-order(L::Lagrange) = nnodes(L)
-eachnode(L::Lagrange) = Base.OneTo(nnodes(L))
 
-Base.axes(L::Lagrange) = (Inclusion(0..1), eachnode(L))
+Base.axes(L::Lagrange) = (Inclusion(0..1), eachbasis(L))
 ContinuumArrays.grid(L::Lagrange) = nodes(L)
 
 Base.hash(L::Lagrange, h::UInt) = hash(L.x, h)
@@ -88,6 +90,6 @@ end
 const LagrangeDerivative = QMul2{<:Derivative,<:Lagrange}
 
 Base.getindex(D::LagrangeDerivative, x::Number, j::Integer) = _eval_derivative(D.B, x, j)
-Base.getindex(D::LagrangeDerivative, x::Number,  ::Colon) = [_eval_derivative(D.B, x, j) for j in eachnode(D.B)]
+Base.getindex(D::LagrangeDerivative, x::Number,  ::Colon) = [_eval_derivative(D.B, x, j) for j in eachbasis(D.B)]
 Base.getindex(D::LagrangeDerivative, X::AbstractVector, j::Integer) = [_eval_derivative(D.B, x, j) for x in X]
-Base.getindex(D::LagrangeDerivative, X::AbstractVector,  ::Colon) = [_eval_derivative(D.B, x, j) for x in X, j in eachnode(D.B)]
+Base.getindex(D::LagrangeDerivative, X::AbstractVector,  ::Colon) = [_eval_derivative(D.B, x, j) for x in X, j in eachbasis(D.B)]

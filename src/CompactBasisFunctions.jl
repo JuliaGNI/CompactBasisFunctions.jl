@@ -10,7 +10,9 @@ module CompactBasisFunctions
 
     include("vandermonde_matrix.jl")
 
-    export degree, eachnode, grid, nbasis, nnodes, nodes, order
+    export basis, eachbasis, nbasis,
+           nodes, eachnode, nnodes,
+           grid, degree, order
 
     include("basis.jl")
 
