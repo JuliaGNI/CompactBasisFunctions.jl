@@ -16,9 +16,11 @@ module CompactBasisFunctions
 
     include("basis.jl")
 
-    export Lagrange, LagrangeDerivative,
+    export Bernstein, BernsteinDerivative,
+           Lagrange, LagrangeDerivative,
            LagrangeGauß, LagrangeLobatto
 
+    include("bernstein.jl")
     include("lagrange.jl")
 
 end
