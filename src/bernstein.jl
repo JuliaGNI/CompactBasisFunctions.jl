@@ -67,3 +67,5 @@ Base.getindex(D::BernsteinDerivative, x::Number, j::Integer) = _eval_derivative(
 Base.getindex(D::BernsteinDerivative, x::Number,  ::Colon) = [_eval_derivative(D.B, x, j) for j in eachbasis(D.B)]
 Base.getindex(D::BernsteinDerivative, X::AbstractVector, j::Integer) = [_eval_derivative(D.B, x, j) for x in X]
 Base.getindex(D::BernsteinDerivative, X::AbstractVector,  ::Colon) = [_eval_derivative(D.B, x, j) for x in X, j in eachbasis(D.B)]
+
+Base.adjoint(B::Bernstein) = Derivative(axes(B,1)) * B

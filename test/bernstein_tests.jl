@@ -7,6 +7,7 @@ import ContinuumArrays: apply, MulQuasiMatrix
 
     @test apply(*,d,l) isa BernsteinDerivative
     @test d*l isa BernsteinDerivative
+    @test l' isa BernsteinDerivative
 
     @test basis(l) == l.b
     @test nbasis(l) == 2

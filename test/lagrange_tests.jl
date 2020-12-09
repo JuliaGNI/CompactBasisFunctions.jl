@@ -9,6 +9,7 @@ import OffsetArrays: OffsetArray
 
     @test apply(*,d,l) isa LagrangeDerivative
     @test d*l isa LagrangeDerivative
+    @test l' isa LagrangeDerivative
 
     @test grid(l) == x
     @test basis(l) == l.b

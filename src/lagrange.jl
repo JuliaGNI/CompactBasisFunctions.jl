@@ -94,3 +94,5 @@ Base.getindex(D::LagrangeDerivative, x::Number, j::Integer) = _eval_derivative(D
 Base.getindex(D::LagrangeDerivative, x::Number,  ::Colon) = [_eval_derivative(D.B, x, j) for j in eachbasis(D.B)]
 Base.getindex(D::LagrangeDerivative, X::AbstractVector, j::Integer) = [_eval_derivative(D.B, x, j) for x in X]
 Base.getindex(D::LagrangeDerivative, X::AbstractVector,  ::Colon) = [_eval_derivative(D.B, x, j) for x in X, j in eachbasis(D.B)]
+
+Base.adjoint(L::Lagrange) = Derivative(axes(L,1)) * L
