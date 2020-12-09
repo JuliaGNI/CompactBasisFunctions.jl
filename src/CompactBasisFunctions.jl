@@ -17,10 +17,14 @@ module CompactBasisFunctions
     include("basis.jl")
 
     export Bernstein, BernsteinDerivative,
+           Chebyshev, ChebyshevDerivative,
+           ChebyshevT, ChebyshevTDerivative,
+           ChebyshevU, ChebyshevUDerivative,
            Lagrange, LagrangeDerivative,
            LagrangeGauß, LagrangeLobatto
 
     include("bernstein.jl")
+    include("chebyshev.jl")
     include("lagrange.jl")
 
 end
