@@ -12,10 +12,8 @@ struct Lagrange{T, BT, XT <: AbstractVector{T}} <: Basis{T}
     diffs::Matrix{T}
     vdminv::Matrix{T}
 
-    function Lagrange{T}(x̂) where {T}
-        n = length(x̂)
-        x = SVector{n}(x̂)
-
+    function Lagrange{T}(x::XT) where {T, XT <: SVector}
+        n = length(x)
         denom = zeros(n)
         diffs = zeros(n,n)
 
@@ -36,6 +34,9 @@ struct Lagrange{T, BT, XT <: AbstractVector{T}} <: Basis{T}
 
         new{T, typeof(b), typeof(x)}(b, x, sdenom, diffs, vandermonde_matrix_inverse(x))
     end
+
+    Lagrange{T}(x::Vector) where {T} = Lagrange{T}(SVector{length(x)}(x))
+    Lagrange{T}(x::AbstractVector) where {T} = Lagrange{T}(collect(x))
 end
 
 Lagrange(x::AbstractVector{T}) where {T} = Lagrange{T}(x)

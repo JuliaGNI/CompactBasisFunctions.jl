@@ -1,4 +1,5 @@
 import ContinuumArrays: apply, MulQuasiMatrix
+import OffsetArrays: OffsetArray
 
 @testset "$(rpad("Lagrange Basis Tests",80))" begin
 
@@ -20,18 +21,22 @@ import ContinuumArrays: apply, MulQuasiMatrix
     @test degree(l) == 1
 
 
+    l0 = Lagrange(OffsetArray(x, 0:1))
     l1 = Lagrange([0.0,  1.0 ])
     l2 = Lagrange([0,    1   ])
     l3 = Lagrange([0.25, 0.75])
 
+    @test hash(l) == hash(l0)
     @test hash(l) == hash(l1)
     @test hash(l) == hash(l2)
     @test hash(l) != hash(l3)
 
+    @test l == l0
     @test l == l1
     @test l == l2
     @test l != l3
 
+    @test  isequal(l, l0)
     @test  isequal(l, l1)
     @test !isequal(l, l2)
     @test !isequal(l, l3)
