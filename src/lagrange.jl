@@ -35,7 +35,7 @@ struct Lagrange{T, BT, XT <: AbstractVector{T}} <: Basis{T}
         new{T, typeof(b), typeof(x)}(b, x, sdenom, diffs, vandermonde_matrix_inverse(x))
     end
 
-    Lagrange{T}(x::Vector) where {T} = Lagrange{T}(SVector{length(x)}(x))
+    Lagrange{T}(x::Vector) where {T} = Lagrange{T}(SVector{length(x),T}(x))
     Lagrange{T}(x::AbstractVector) where {T} = Lagrange{T}(collect(x))
 end
 
@@ -61,6 +61,7 @@ ContinuumArrays.grid(L::Lagrange) = nodes(L)
 Base.hash(L::Lagrange, h::UInt) = hash(L.x, h)
 Base.:(==)(L1::Lagrange, L2::Lagrange) = (L1.x == L2.x)
 Base.isequal(L1::Lagrange{T1}, L2::Lagrange{T2}) where {T1,T2} = (T1 == T2 && L1 == L2)
+Base.isapprox(L1::Lagrange, L2::Lagrange; kwargs...) = isapprox(L1.x, L2.x; kwargs...)
 
 Base.getindex(L::Lagrange, x::Number, j::Integer) = L(x,j)
 Base.getindex(L::Lagrange, x::Number,  ::Colon) = [b(x) for b in L.b]

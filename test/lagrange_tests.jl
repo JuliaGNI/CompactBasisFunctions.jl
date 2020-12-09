@@ -26,21 +26,31 @@ import OffsetArrays: OffsetArray
     l1 = Lagrange([0.0,  1.0 ])
     l2 = Lagrange([0,    1   ])
     l3 = Lagrange([0.25, 0.75])
+    l4 = Lagrange{Float32}(x)
 
     @test hash(l) == hash(l0)
     @test hash(l) == hash(l1)
     @test hash(l) == hash(l2)
     @test hash(l) != hash(l3)
+    @test hash(l) == hash(l4)
 
     @test l == l0
     @test l == l1
     @test l == l2
     @test l != l3
+    @test l == l4
 
     @test  isequal(l, l0)
     @test  isequal(l, l1)
     @test !isequal(l, l2)
     @test !isequal(l, l3)
+    @test !isequal(l, l4)
+
+    @test  isapprox(l, l0)
+    @test  isapprox(l, l1)
+    @test  isapprox(l, l2)
+    @test !isapprox(l, l3)
+    @test  isapprox(l, l4)
 
 
     @test l != LagrangeGauß(2)
