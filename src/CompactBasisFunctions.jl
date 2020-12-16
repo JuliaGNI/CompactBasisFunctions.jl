@@ -19,10 +19,12 @@ module CompactBasisFunctions
            ChebyshevT, ChebyshevTDerivative,
            ChebyshevU, ChebyshevUDerivative,
            Lagrange, LagrangeDerivative,
-           LagrangeGauß, LagrangeLobatto
+           LagrangeGauß, LagrangeLobatto,
+           Legendre, LegendreDerivative
 
     include("bernstein.jl")
     include("chebyshev.jl")
     include("lagrange.jl")
+    include("legendre.jl")
 
 end
