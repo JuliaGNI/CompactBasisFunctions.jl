@@ -67,19 +67,29 @@ import ContinuumArrays: apply, MulQuasiMatrix
     @test l[0.5, 1] == 0.5
     @test l[1.0, 1] == 1.0
 
+    @test l[0, 0] == +1.0
+    @test l[1, 0] ==  0.0
+    @test l[2, 0] == -1.0
+
+    @test l[0, 1] == 0.0
+    @test l[1, 1] == 1.0
+    @test l[2, 1] == 2.0
+
 
     @test (d*l)[0.0, 0] == -1.0
     @test (d*l)[0.5, 0] == -1.0
     @test (d*l)[1.0, 0] == -1.0
 
-    @test (d*l)[0.0, 1] == 1.0
-    @test (d*l)[0.5, 1] == 1.0
-    @test (d*l)[1.0, 1] == 1.0
+    @test (d*l)[0.0, 1] == +1.0
+    @test (d*l)[0.5, 1] == +1.0
+    @test (d*l)[1.0, 1] == +1.0
 
+    @test (d*l)[0, 0] == -1.0
     @test (d*l)[1, 0] == -1.0
     @test (d*l)[2, 0] == -1.0
 
-    @test (d*l)[1, 1] == 1.0
-    @test (d*l)[2, 1] == 1.0
+    @test (d*l)[0, 1] == +1.0
+    @test (d*l)[1, 1] == +1.0
+    @test (d*l)[2, 1] == +1.0
 
 end
