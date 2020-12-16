@@ -1,5 +1,5 @@
 
-import CompactBasisFunctions: Basis
+import CompactBasisFunctions: Basis, nodes, nnodes, eachnode
 
 @testset "$(rpad("Basis Tests",80))" begin
 
