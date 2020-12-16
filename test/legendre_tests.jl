@@ -54,26 +54,26 @@ import ContinuumArrays: apply, MulQuasiMatrix
     @test l(0.5, 0) ==  1.0
     @test l(1.0, 0) ==  1.0
 
-    @test l(0.0, 1) == -1.0
+    @test l(0.0, 1) == -sqrt(3)
     @test l(0.5, 1) ==  0.0
-    @test l(1.0, 1) == +1.0
+    @test l(1.0, 1) == +sqrt(3)
 
 
     @test l[0.0, 0] ==  1.0
     @test l[0.5, 0] ==  1.0
     @test l[1.0, 0] ==  1.0
 
-    @test l[0.0, 1] == -1.0
+    @test l[0.0, 1] == -sqrt(3)
     @test l[0.5, 1] ==  0.0
-    @test l[1.0, 1] == +1.0
+    @test l[1.0, 1] == +sqrt(3)
 
     @test l[0, 0] ==  1.0
     @test l[1, 0] ==  1.0
     @test l[2, 0] ==  1.0
 
-    @test l[0, 1] == -1.0
-    @test l[1, 1] == +1.0
-    @test l[2, 1] == +3.0
+    @test l[0, 1] == -sqrt(3)
+    @test l[1, 1] == +sqrt(3)
+    @test l[2, 1] == +sqrt(27)
 
 
     @test (d*l)[0.0, 0] == 0.0
@@ -102,13 +102,13 @@ import ContinuumArrays: apply, MulQuasiMatrix
     @test l[0.5, 0] == 1.0
     @test l[1.0, 0] == 1.0
 
-    @test l(0.0, 1) == -1.0
+    @test l(0.0, 1) == -sqrt(3)
     @test l(0.5, 1) ==  0.0
-    @test l(1.0, 1) == +1.0
+    @test l(1.0, 1) == +sqrt(3)
 
-    @test l[0.0, 2] == +1.0
-    @test l[0.5, 2] == -0.5
-    @test l[1.0, 2] == +1.0
+    @test l[0.0, 2] == +1.0 * sqrt(5)
+    @test l[0.5, 2] == -0.5 * sqrt(5)
+    @test l[1.0, 2] == +1.0 * sqrt(5)
 
     @test (d*l)[0.0, 0] ==  0.0
     @test (d*l)[0.5, 0] ==  0.0

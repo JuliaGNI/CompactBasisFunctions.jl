@@ -23,7 +23,7 @@ struct Legendre{T, LT} <: Basis{T}
 
     function Legendre{T}(n::Integer) where {T}
         p = n-1
-        b = OffsetArray([y -> _legendre(i, 2y-1) for i in 0:p], 0:p)
+        b = OffsetArray([y -> _legendre(i, 2y-1) * sqrt(T(2i+1)) for i in 0:p], 0:p)
         new{T, typeof(b)}(b, n)
     end
 
@@ -32,9 +32,10 @@ end
 Legendre(::Type{T}, n::Integer) where {T} = Legendre{T}(n)
 Legendre(n::Integer) = Legendre(Float64, n)
 
-function _eval(l::Legendre{LT}, x::DT, j::Int) where {LT,DT}
-    @assert j ≥ 0 && j < l.n
-    _legendre(j, 2x-1)
+function _eval(L::Legendre{LT}, x::DT, j::Int) where {LT,DT}
+    local T = promote_type(LT, DT)
+    @assert j ≥ 0 && j < L.n
+    _legendre(j, 2x-1) * sqrt(T(2j+1))
 end
 
 (L::Legendre)(x::Number, j::Integer) = L.b[j](x)
