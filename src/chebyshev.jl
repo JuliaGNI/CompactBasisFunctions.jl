@@ -63,6 +63,7 @@ eachnode(C::Chebyshev)  = eachindex(nodes(C))
 order(C::Chebyshev)  = nnodes(C)
 degree(C::Chebyshev) = nnodes(C) - 1
 
+Base.eltype(::Chebyshev{kind,T}) where {kind,T} = T
 Base.axes(C::Chebyshev) = (Inclusion(0..1), eachbasis(C))
 ContinuumArrays.grid(C::Chebyshev) = nodes(C)
 
@@ -79,25 +80,29 @@ Base.getindex(C::Chebyshev, X::AbstractVector,  ::Colon) = [b(x) for x in X, b i
 
 ## Derivative
 
-function _eval_derivative(C::Chebyshev{1}, x, i::Int)
-    @assert i ≥ 0 && i < nbasis(C)
-    _chebyshev(Val(2), i-1, x) * i
-end
-
-function _eval_derivative(C::Chebyshev{2}, x, i::Int)
-    @assert i ≥ 0 && i < nbasis(C)
-    ( _chebyshev(Val(1), i+1, x) * (i+1) - _chebyshev(Val(2), i, x) * x ) / (x^2 - 1)
-end
-
 @simplify *(D::Derivative, C::Chebyshev) = Mul(D,C)
 
 const ChebyshevDerivative  = QMul2{<:Derivative,<:Chebyshev}
 const ChebyshevTDerivative = QMul2{<:Derivative,<:ChebyshevT}
 const ChebyshevUDerivative = QMul2{<:Derivative,<:ChebyshevU}
 
-Base.getindex(D::ChebyshevDerivative, x::Number, j::Integer) = _eval_derivative(D.B, x, j)
-Base.getindex(D::ChebyshevDerivative, x::Number,  ::Colon) = [_eval_derivative(D.B, x, j) for j in eachbasis(D.B)]
-Base.getindex(D::ChebyshevDerivative, X::AbstractVector, j::Integer) = [_eval_derivative(D.B, x, j) for x in X]
-Base.getindex(D::ChebyshevDerivative, X::AbstractVector,  ::Colon) = [_eval_derivative(D.B, x, j) for x in X, j in eachbasis(D.B)]
+function _eval(D::ChebyshevTDerivative, x::DT, i::Int) where {DT}
+    local C = D.B
+    local x̃ = promote_type(eltype(C), DT)(x)
+    @assert i ≥ 0 && i < nbasis(C)
+    _chebyshev(Val(2), i-1, x̃) * i
+end
+
+function _eval(D::ChebyshevUDerivative, x::DT, i::Int) where {DT}
+    local C = D.B
+    local x̃ = promote_type(eltype(C), DT)(x)
+    @assert i ≥ 0 && i < nbasis(C)
+    ( _chebyshev(Val(1), i+1, x̃) * (i+1) - _chebyshev(Val(2), i, x̃) * x̃ ) / (x̃^2 - 1)
+end
+
+Base.getindex(D::ChebyshevDerivative, x::Number, j::Integer) = _eval(D, x, j)
+Base.getindex(D::ChebyshevDerivative, x::Number,  ::Colon) = [_eval(D, x, j) for j in eachbasis(D.B)]
+Base.getindex(D::ChebyshevDerivative, X::AbstractVector, j::Integer) = [_eval(D, x, j) for x in X]
+Base.getindex(D::ChebyshevDerivative, X::AbstractVector,  ::Colon) = [_eval(D, x, j) for x in X, j in eachbasis(D.B)]
 
 Base.adjoint(C::Chebyshev) = Derivative(axes(C,1)) * C
