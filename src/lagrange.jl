@@ -55,6 +55,7 @@ eachnode(L::Lagrange)  = eachindex(nodes(L))
 order(L::Lagrange)  = nnodes(L)
 degree(L::Lagrange) = nnodes(L) - 1
 
+Base.eltype(::Lagrange{T}) where {T} = T
 Base.axes(L::Lagrange) = (Inclusion(0..1), eachbasis(L))
 ContinuumArrays.grid(L::Lagrange) = nodes(L)
 
@@ -71,8 +72,13 @@ Base.getindex(L::Lagrange, X::AbstractVector,  ::Colon) = [b(x) for x in X, b in
 
 ## Derivative
 
-function _eval_derivative(L::Lagrange{LT}, x::DT, j::Int) where {LT,DT}
-    local T = promote_type(LT,DT)
+@simplify *(D::Derivative, L::Lagrange) = Mul(D,L)
+
+const LagrangeDerivative = QMul2{<:Derivative,<:Lagrange}
+
+function _eval(D::LagrangeDerivative, x::DT, j::Int) where {DT}
+    local L = D.B
+    local T = promote_type(eltype(L), DT)
     local d::T = 0
 
     for l in eachnode(L)
@@ -87,13 +93,9 @@ function _eval_derivative(L::Lagrange{LT}, x::DT, j::Int) where {LT,DT}
     return d
 end
 
-@simplify *(D::Derivative, L::Lagrange) = Mul(D,L)
-
-const LagrangeDerivative = QMul2{<:Derivative,<:Lagrange}
-
-Base.getindex(D::LagrangeDerivative, x::Number, j::Integer) = _eval_derivative(D.B, x, j)
-Base.getindex(D::LagrangeDerivative, x::Number,  ::Colon) = [_eval_derivative(D.B, x, j) for j in eachbasis(D.B)]
-Base.getindex(D::LagrangeDerivative, X::AbstractVector, j::Integer) = [_eval_derivative(D.B, x, j) for x in X]
-Base.getindex(D::LagrangeDerivative, X::AbstractVector,  ::Colon) = [_eval_derivative(D.B, x, j) for x in X, j in eachbasis(D.B)]
+Base.getindex(D::LagrangeDerivative, x::Number, j::Integer) = _eval(D, x, j)
+Base.getindex(D::LagrangeDerivative, x::Number,  ::Colon) = [_eval(D, x, j) for j in eachbasis(D.B)]
+Base.getindex(D::LagrangeDerivative, X::AbstractVector, j::Integer) = [_eval(D, x, j) for x in X]
+Base.getindex(D::LagrangeDerivative, X::AbstractVector,  ::Colon) = [_eval(D, x, j) for x in X, j in eachbasis(D.B)]
 
 Base.adjoint(L::Lagrange) = Derivative(axes(L,1)) * L
