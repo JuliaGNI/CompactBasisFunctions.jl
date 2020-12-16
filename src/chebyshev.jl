@@ -58,13 +58,12 @@ basis(C::Chebyshev) = C.b
 nodes(C::Chebyshev) = C.x
 nbasis(C::Chebyshev) = length(basis(C))
 nnodes(C::Chebyshev) = length(nodes(C))
-eachbasis(C::Chebyshev) = eachindex(basis(C))
-eachnode(C::Chebyshev)  = eachindex(nodes(C))
 order(C::Chebyshev)  = nnodes(C)
 degree(C::Chebyshev) = nnodes(C) - 1
 
 Base.eltype(::Chebyshev{kind,T}) where {kind,T} = T
-Base.axes(C::Chebyshev) = (Inclusion(0..1), eachbasis(C))
+Base.eachindex(C::Chebyshev) = eachindex(C.b)
+Base.axes(C::Chebyshev) = (Inclusion(0..1), eachindex(C))
 ContinuumArrays.grid(C::Chebyshev) = nodes(C)
 
 Base.hash(C::Chebyshev{kind}, h::UInt) where {kind} = hash(C.x, hash(kind, h))
@@ -101,8 +100,8 @@ function _eval(D::ChebyshevUDerivative, x::DT, i::Int) where {DT}
 end
 
 Base.getindex(D::ChebyshevDerivative, x::Number, j::Integer) = _eval(D, x, j)
-Base.getindex(D::ChebyshevDerivative, x::Number,  ::Colon) = [_eval(D, x, j) for j in eachbasis(D.B)]
+Base.getindex(D::ChebyshevDerivative, x::Number,  ::Colon) = [_eval(D, x, j) for j in eachindex(D.B)]
 Base.getindex(D::ChebyshevDerivative, X::AbstractVector, j::Integer) = [_eval(D, x, j) for x in X]
-Base.getindex(D::ChebyshevDerivative, X::AbstractVector,  ::Colon) = [_eval(D, x, j) for x in X, j in eachbasis(D.B)]
+Base.getindex(D::ChebyshevDerivative, X::AbstractVector,  ::Colon) = [_eval(D, x, j) for x in X, j in eachindex(D.B)]
 
 Base.adjoint(C::Chebyshev) = Derivative(axes(C,1)) * C

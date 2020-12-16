@@ -36,11 +36,12 @@ Bernstein(n::Integer) = Bernstein(Float64, n)
 
 basis(B::Bernstein) = B.b
 nbasis(B::Bernstein) = B.n
-eachbasis(B::Bernstein) = eachindex(B.b)
 order(B::Bernstein) = nbasis(B)
 degree(B::Bernstein) = nbasis(B) - 1
 
-Base.axes(B::Bernstein) = (Inclusion(0..1), eachbasis(B))
+Base.eltype(::Bernstein{T}) where {T} = T
+Base.eachindex(B::Bernstein) = eachindex(B.b)
+Base.axes(B::Bernstein) = (Inclusion(0..1), eachindex(B))
 
 Base.hash(B::Bernstein, h::UInt) = hash(B.n, h)
 Base.:(==)(B1::Bernstein, B2::Bernstein) = (B1.n == B2.n)
@@ -64,8 +65,8 @@ end
 const BernsteinDerivative = QMul2{<:Derivative,<:Bernstein}
 
 Base.getindex(D::BernsteinDerivative, x::Number, j::Integer) = _eval_derivative(D.B, x, j)
-Base.getindex(D::BernsteinDerivative, x::Number,  ::Colon) = [_eval_derivative(D.B, x, j) for j in eachbasis(D.B)]
+Base.getindex(D::BernsteinDerivative, x::Number,  ::Colon) = [_eval_derivative(D.B, x, j) for j in eachindex(D.B)]
 Base.getindex(D::BernsteinDerivative, X::AbstractVector, j::Integer) = [_eval_derivative(D.B, x, j) for x in X]
-Base.getindex(D::BernsteinDerivative, X::AbstractVector,  ::Colon) = [_eval_derivative(D.B, x, j) for x in X, j in eachbasis(D.B)]
+Base.getindex(D::BernsteinDerivative, X::AbstractVector,  ::Colon) = [_eval_derivative(D.B, x, j) for x in X, j in eachindex(D.B)]
 
 Base.adjoint(B::Bernstein) = Derivative(axes(B,1)) * B

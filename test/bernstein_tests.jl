@@ -11,7 +11,7 @@ import ContinuumArrays: apply, MulQuasiMatrix
 
     @test basis(l) == l.b
     @test nbasis(l) == 2
-    @test eachbasis(l) == 0:1
+    @test eachindex(l) == 0:1
     @test order(l) == 2
     @test degree(l) == 1
 
@@ -35,16 +35,16 @@ import ContinuumArrays: apply, MulQuasiMatrix
 
     y = rand(5)
 
-    z1 = parent([ l[y[i], j] for i in eachindex(y), j in eachbasis(l)])
+    z1 = parent([ l[y[i], j] for i in eachindex(y), j in eachindex(l)])
     z2 =   hcat([ l[y[i], :] for i in eachindex(y)]...)'
-    z3 =   hcat([ l[y,    j] for j in eachbasis(l)]...)
+    z3 =   hcat([ l[y,    j] for j in eachindex(l)]...)
     z4 = parent(  l[y,    :] )
 
     @test z1 == z2 == z3 == z4
 
-    z1 = parent([ (d*l)[y[i], j] for i in eachindex(y), j in eachbasis(l)])
+    z1 = parent([ (d*l)[y[i], j] for i in eachindex(y), j in eachindex(l)])
     z2 =   hcat([ (d*l)[y[i], :] for i in eachindex(y)]...)'
-    z3 =   hcat([ (d*l)[y,    j] for j in eachbasis(l)]...)
+    z3 =   hcat([ (d*l)[y,    j] for j in eachindex(l)]...)
     z4 = parent(  (d*l)[y,    :] )
 
     @test z1 == z2 == z3 == z4

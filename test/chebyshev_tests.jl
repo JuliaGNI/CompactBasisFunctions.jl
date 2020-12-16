@@ -33,8 +33,7 @@ import OffsetArrays: OffsetArray
     @test nodes(t) == t.x
     @test nbasis(t) == 2
     @test nnodes(t) == 2
-    @test eachnode(t) == 1:2
-    @test eachbasis(t) == 0:1
+    @test eachindex(t) == 0:1
     @test order(t)  == 2
     @test degree(t) == 1
 
@@ -43,8 +42,7 @@ import OffsetArrays: OffsetArray
     @test nodes(u) == u.x
     @test nbasis(u) == 2
     @test nnodes(u) == 2
-    @test eachnode(u) == 1:2
-    @test eachbasis(u) == 0:1
+    @test eachindex(u) == 0:1
     @test order(u)  == 2
     @test degree(u) == 1
 
@@ -104,30 +102,30 @@ import OffsetArrays: OffsetArray
 
     y = rand(5)
 
-    z1 = parent([ t[y[i], j] for i in eachindex(y), j in eachbasis(t)])
+    z1 = parent([ t[y[i], j] for i in eachindex(y), j in eachindex(t)])
     z2 =   hcat([ t[y[i], :] for i in eachindex(y)]...)'
-    z3 =   hcat([ t[y,    j] for j in eachbasis(t)]...)
+    z3 =   hcat([ t[y,    j] for j in eachindex(t)]...)
     z4 = parent(  t[y,    :] )
 
     @test z1 == z2 == z3 == z4
 
-    z1 = parent([ u[y[i], j] for i in eachindex(y), j in eachbasis(u)] )
+    z1 = parent([ u[y[i], j] for i in eachindex(y), j in eachindex(u)] )
     z2 =   hcat([ u[y[i], :] for i in eachindex(y)]...)'
-    z3 =   hcat([ u[y,    j] for j in eachbasis(u)]...)
+    z3 =   hcat([ u[y,    j] for j in eachindex(u)]...)
     z4 = parent(  u[y,    :] )
 
     @test z1 == z2 == z3 == z4
 
-    z1 = parent([ (d*t)[y[i], j] for i in eachindex(y), j in eachbasis(t)])
+    z1 = parent([ (d*t)[y[i], j] for i in eachindex(y), j in eachindex(t)])
     z2 =   hcat([ (d*t)[y[i], :] for i in eachindex(y)]...)'
-    z3 =   hcat([ (d*t)[y,    j] for j in eachbasis(t)]...)
+    z3 =   hcat([ (d*t)[y,    j] for j in eachindex(t)]...)
     z4 = parent(  (d*t)[y,    :] )
 
     @test z1 == z2 == z3 == z4
 
-    z1 = parent([ (d*u)[y[i], j] for i in eachindex(y), j in eachbasis(u)])
+    z1 = parent([ (d*u)[y[i], j] for i in eachindex(y), j in eachindex(u)])
     z2 =   hcat([ (d*u)[y[i], :] for i in eachindex(y)]...)'
-    z3 =   hcat([ (d*u)[y,    j] for j in eachbasis(u)]...)
+    z3 =   hcat([ (d*u)[y,    j] for j in eachindex(u)]...)
     z4 = parent(  (d*u)[y,    :] )
 
     @test z1 == z2 == z3 == z4

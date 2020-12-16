@@ -1,5 +1,5 @@
 
-import CompactBasisFunctions: Basis, nodes, nnodes, eachnode
+import CompactBasisFunctions: Basis, nodes, nnodes
 
 @testset "$(rpad("Basis Tests",80))" begin
 
@@ -13,10 +13,9 @@ import CompactBasisFunctions: Basis, nodes, nnodes, eachnode
     @test_throws ErrorException nbasis(test_basis)
     @test_throws ErrorException nnodes(test_basis)
 
-    @test_throws ErrorException eachbasis(test_basis)
-    @test_throws ErrorException eachnode(test_basis)
-
     @test_throws ErrorException order(test_basis)
     @test_throws ErrorException degree(test_basis)
+
+    @test_throws ErrorException eachindex(test_basis)
 
 end

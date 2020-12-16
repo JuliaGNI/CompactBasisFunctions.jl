@@ -41,12 +41,12 @@ end
 
 basis(L::Legendre) = L.b
 nbasis(L::Legendre) = L.n
-eachbasis(L::Legendre) = eachindex(L.b)
 order(L::Legendre) = nbasis(L)
 degree(L::Legendre) = nbasis(L) - 1
 
 Base.eltype(::Legendre{T}) where {T} = T
-Base.axes(L::Legendre) = (Inclusion(0..1), eachbasis(L))
+Base.eachindex(L::Legendre) = eachindex(L.b)
+Base.axes(L::Legendre) = (Inclusion(0..1), eachindex(L))
 
 Base.hash(L::Legendre, h::UInt) = hash(L.n, h)
 Base.:(==)(L1::Legendre, L2::Legendre) = (L1.n == L2.n)
@@ -86,8 +86,8 @@ function _eval(D::LegendreDerivative, x::DT, j::Int) where {DT}
 end
 
 Base.getindex(D::LegendreDerivative, x::Number, j::Integer) = _eval(D, x, j)
-Base.getindex(D::LegendreDerivative, x::Number,  ::Colon) = [_eval(D, x, j) for j in eachbasis(D.B)]
+Base.getindex(D::LegendreDerivative, x::Number,  ::Colon) = [_eval(D, x, j) for j in eachindex(D.B)]
 Base.getindex(D::LegendreDerivative, X::AbstractVector, j::Integer) = [_eval(D, x, j) for x in X]
-Base.getindex(D::LegendreDerivative, X::AbstractVector,  ::Colon) = [_eval(D, x, j) for x in X, j in eachbasis(D.B)]
+Base.getindex(D::LegendreDerivative, X::AbstractVector,  ::Colon) = [_eval(D, x, j) for x in X, j in eachindex(D.B)]
 
 Base.adjoint(L::Legendre) = Derivative(axes(L,1)) * L

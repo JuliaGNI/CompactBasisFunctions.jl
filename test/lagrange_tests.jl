@@ -16,8 +16,7 @@ import OffsetArrays: OffsetArray
     @test nodes(l) == x
     @test nbasis(l) == 2
     @test nnodes(l) == 2
-    @test eachnode(l) == 1:2
-    @test eachbasis(l) == 1:2
+    @test eachindex(l) == 1:2
     @test order(l)  == 2
     @test degree(l) == 1
 
@@ -59,16 +58,16 @@ import OffsetArrays: OffsetArray
 
     y = rand(5)
 
-    z1 =      [ l[y[i], j] for i in eachindex(y), j in eachbasis(l)]
+    z1 =      [ l[y[i], j] for i in eachindex(y), j in eachindex(l)]
     z2 = hcat([ l[y[i], :] for i in eachindex(y)]...)'
-    z3 = hcat([ l[y,    j] for j in eachbasis(l)]...)
+    z3 = hcat([ l[y,    j] for j in eachindex(l)]...)
     z4 =        l[y,    :]
 
     @test z1 == z2 == z3 == z4
 
-    z1 =      [ (d*l)[y[i], j] for i in eachindex(y), j in eachbasis(l)]
+    z1 =      [ (d*l)[y[i], j] for i in eachindex(y), j in eachindex(l)]
     z2 = hcat([ (d*l)[y[i], :] for i in eachindex(y)]...)'
-    z3 = hcat([ (d*l)[y,    j] for j in eachbasis(l)]...)
+    z3 = hcat([ (d*l)[y,    j] for j in eachindex(l)]...)
     z4 =        (d*l)[y,    :]
 
     @test z1 == z2 == z3 == z4
