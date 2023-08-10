@@ -17,5 +17,7 @@ makedocs(;
 )
 
 deploydocs(;
-    repo="github.com/JuliaGNI/CompactBasisFunctions.jl",
+    repo   = "github.com/JuliaGNI/CompactBasisFunctions.jl",
+    devurl = "latest",
+    devbranch = "main",
 )
