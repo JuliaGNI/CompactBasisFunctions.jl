@@ -1,7 +1,7 @@
 name = "CompactBasisFunctions"
 uuid = "a09551c4-f815-4143-809e-dd1986753ba7"
 authors = ["Michael Kraus"]
-version = "0.2.9"
+version = "0.2.10"
 
 [deps]
 ContinuumArrays = "7ae1f121-cc2c-504b-ac30-9b923412ae5c"
@@ -12,7 +12,7 @@ QuadratureRules = "a08977f5-a20d-4b99-b11f-f5ea535e0575"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
 [compat]
-ContinuumArrays = "0.8, 0.9, 0.10, 0.11, 0.12, 0.13, 0.14, 0.15, 0.16"
+ContinuumArrays = "0.8, 0.9, 0.10, 0.11, 0.12, 0.13, 0.14, 0.15, 0.16, 0.17"
 FastTransforms = "0.13, 0.14, 0.15"
 OffsetArrays = "1"
 QuadratureRules = "0.1"
