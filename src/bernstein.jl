@@ -30,8 +30,50 @@ derivative work for `n = 1`.
 end
 
 
-"""
-Bernstein basis on the interval [0..1].
+@doc raw"""
+    Bernstein(n)
+    Bernstein(T, n)
+
+The Bernstein basis of `n` functions, i.e. of degree ``p = n-1``, on the interval ``[0,1]``,
+
+```math
+B_{j,p}(x) = \binom{p}{j} \, x^j \, (1-x)^{p-j} , \qquad j = 0, \dots, p ,
+```
+
+indexed from `0`. `T` is the element type and defaults to `Float64`.
+
+The basis is *modal*: its coefficients are not values at points, so it has no
+[`nodes`](@ref) and no `grid`, and those accessors throw. The coefficients are the control
+values of a Bézier curve.
+
+On ``[0,1]`` the basis functions are non-negative and form a partition of unity,
+``\sum_j B_{j,p}(x) = 1``, so an expansion is a convex combination of its coefficients and
+therefore lies in their convex hull. The first and last function interpolate the endpoints,
+``B_{0,p}(0) = B_{p,p}(1) = 1``, while every other function vanishes at both.
+
+```jldoctest
+julia> b = Bernstein(3);
+
+julia> b[0.0, 0], b[0.5, 0], b[1.0, 0]     # B₀ interpolates the left endpoint
+(1.0, 0.25, 0.0)
+
+julia> b[0.0, 2], b[0.5, 2], b[1.0, 2]     # B₂ interpolates the right endpoint
+(0.0, 0.25, 1.0)
+
+julia> sum(b[0.3, j] for j in eachindex(b)) ≈ 1
+true
+```
+
+The derivative is again a Bernstein expansion, of one degree less,
+
+```math
+B_{j,p}'(x) = p \, \big( B_{j-1,p-1}(x) - B_{j,p-1}(x) \big) ,
+```
+
+and is obtained as `Derivative(axes(b,1)) * b`; see [Derivatives](@ref).
+
+See also [`Legendre`](@ref) for the other modal basis, and [Bernstein basis](@ref) for the
+full discussion.
 """
 struct Bernstein{T, BT} <: Basis{T}
     b::BT
@@ -83,6 +125,15 @@ end
 
 @simplify *(D::Derivative, B::Bernstein) = Mul(D,B)
 
+"""
+    BernsteinDerivative
+
+The type of `Derivative(axes(b,1)) * b` for a [`Bernstein`](@ref) basis `b`, equivalently of
+`b'`.
+
+A lazy product: it stores the basis and evaluates the derivative on indexing, so
+`(d*b)[x,j]` is ``B_{j,p}'(x)``. See [Derivatives](@ref).
+"""
 const BernsteinDerivative = QMul2{<:Derivative,<:Bernstein}
 
 Base.getindex(D::BernsteinDerivative, x::Number, j::Integer) = _eval_derivative(D.B, x, j)

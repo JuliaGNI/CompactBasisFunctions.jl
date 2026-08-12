@@ -1,6 +1,12 @@
 [deps]
 CompactBasisFunctions = "a09551c4-f815-4143-809e-dd1986753ba7"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+DocumenterCitations = "daee34ce-89f3-4625-b898-19384cb65244"
+QuadratureRules = "a08977f5-a20d-4b99-b11f-f5ea535e0575"
+
+[sources]
+CompactBasisFunctions = {path = ".."}
 
 [compat]
 Documenter = "1"
+DocumenterCitations = "1"
