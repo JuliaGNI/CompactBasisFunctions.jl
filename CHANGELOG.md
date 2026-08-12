@@ -7,6 +7,59 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Releases 
 not covered here; see the git history for those.
 
 
+## [0.3.1]
+
+### Fixed
+
+- **An evaluation now runs in the wider of the basis's element type and the argument's.** A basis
+  of extended precision reported a precision it did not carry:
+
+  ```julia
+  b = Legendre(BigFloat, 6)
+  b[0.3, 5] == b[BigFloat(0.3), 5]        # false before, true now
+  ```
+
+  `Legendre` widened only the trailing `√(2j+1)` factor and ran Bonnet's recurrence in the type of
+  the argument, so a `BigFloat` basis evaluated at a `Float64` point returned a `BigFloat` correct
+  to `1.3e-16` relative and no further. `Bernstein` and `Chebyshev` did not widen at all and
+  returned a `Float64` outright — although their derivative evaluators already promoted, so a
+  basis and its derivative disagreed about their own element type. This is the same class of bug
+  as the `Lagrange` buffer allocation fixed in 0.3.0.
+
+  The four evaluators that lacked it — the `Legendre`, `Chebyshev` and `Bernstein` basis
+  functions, and `Bernstein`'s derivative — now convert the argument first, as
+  `Legendre`'s and `Chebyshev`'s derivatives already did. `Lagrange` needed no change; it
+  promotes elementwise against its own nodes.
+
+  The promotion only ever widens, so an argument more precise than the basis is untouched and
+  every value at matching precision is unchanged. What changes is the return type of `Bernstein`
+  and `Chebyshev` where `T` is wider than the argument, and the accuracy of `Legendre` there.
+
+- **`Lagrange` accepted node sets whose differences are degenerate.** The check used `allunique`,
+  which compares with `isequal`, and so asked a different question from the one that matters:
+
+  ```julia
+  allunique([0.0, -0.0])      # true — yet 0.0 - (-0.0) is 0.0
+  Lagrange([0.0, -0.0])       # accepted, denominators Inf
+  Lagrange([0.0, NaN, 1.0])   # accepted, every value NaN
+  ```
+
+  It now tests the product of the node differences that each denominator inverts, rejecting it
+  when zero or non-finite. Repeated nodes still throw as before, repeated `NaN` still throws, and
+  `-0.0` is still a perfectly good node among distinct ones.
+
+### Changed
+
+- `docs/Project.toml` drops its `[sources]` block: the documentation workflow already develops the
+  package from the checkout, and `[sources]` is understood only by Pkg 1.11 and later while this
+  package supports Julia 1.10. The root `Project.toml` dropped its own in 0.3.0 for the same
+  reason.
+
+- The Documentation workflow no longer runs `doctest` as a step of its own. That step never called
+  `DocMeta.setdocmeta!`, so the doctests it ran had nothing in scope; `makedocs` runs them with the
+  correct setup in the step that follows.
+
+
 ## [0.3.0]
 
 **This release is breaking.** Three numerical results change: the Chebyshev basis now lives on
@@ -217,4 +270,5 @@ defined here, the `FastTransforms` dependency is gone, and the lower bounds on J
   `GenericFFT` and `DSP` from the dependency tree.
 
 
-[0.3.0]: https://github.com/JuliaGNI/CompactBasisFunctions.jl/compare/v0.2.15...main
+[0.3.1]: https://github.com/JuliaGNI/CompactBasisFunctions.jl/compare/v0.3.0...main
+[0.3.0]: https://github.com/JuliaGNI/CompactBasisFunctions.jl/compare/v0.2.15...v0.3.0
