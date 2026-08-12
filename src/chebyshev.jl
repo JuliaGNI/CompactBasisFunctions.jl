@@ -102,13 +102,53 @@ const ChebyshevTDerivative = QMul2{<:Derivative,<:ChebyshevT}
 const ChebyshevUDerivative = QMul2{<:Derivative,<:ChebyshevU}
 
 """
+Derivative of the Chebyshev polynomial of the first kind on the interval [-1..+1],
+via ``T_j' = j \\, U_{j-1}``.
+"""
+@inline function _chebyshev_derivative(::Val{1}, j::Int, x::T) where {T}
+    j ≤ 0 && return zero(T)
+    return _chebyshev(Val(2), j-1, x) * j
+end
+
+"""
+Derivative of the Chebyshev polynomial of the second kind on the interval [-1..+1].
+
+Obtained by differentiating the recurrence ``U_j = 2x U_{j-1} - U_{j-2}`` term by term,
+
+```math
+U_j' = 2 U_{j-1} + 2x U_{j-1}' - U_{j-2}' ,
+```
+
+carried alongside ``U_j`` itself. The closed form
+``U_j' = ((j+1) T_{j+1} - x U_j) / (x^2 - 1)`` is not used because it is ``0/0`` at
+``x = \\pm 1``, i.e. at both endpoints of the interval, where the derivative is perfectly
+finite.
+"""
+@inline function _chebyshev_derivative(::Val{2}, j::Int, x::T) where {T}
+    j ≤ 0 && return zero(T)
+
+    local u₂ = one(T)      # U_0
+    local u₁ = 2x          # U_1
+    local d₂ = zero(T)     # U_0'
+    local d₁ = T(2)        # U_1'
+
+    for _ in 2:j
+        u₂, u₁ = u₁, u₁ * 2x - u₂
+        d₂, d₁ = d₁, 2u₂ + d₁ * 2x - d₂
+    end
+
+    return d₁
+end
+
+
+"""
 Evaluate derivative of Chebyshev polynomial of the first kind on the interval [0..1].
 """
 function _eval(D::ChebyshevTDerivative, x::DT, i::Int) where {DT}
     local C = D.B
     local x̃ = promote_type(eltype(C), DT)(2x-1)
-    @assert i ≥ 0 && i < nbasis(C)
-    _chebyshev(Val(2), i-1, x̃) * i * 2
+    @boundscheck i ≥ 0 && i < nbasis(C) || throw(BoundsError(C, i))
+    _chebyshev_derivative(Val(1), i, x̃) * 2
 end
 
 """
@@ -117,8 +157,8 @@ Evaluate derivative of Chebyshev polynomial of the second kind on the interval [
 function _eval(D::ChebyshevUDerivative, x::DT, i::Int) where {DT}
     local C = D.B
     local x̃ = promote_type(eltype(C), DT)(2x-1)
-    @assert i ≥ 0 && i < nbasis(C)
-    ( _chebyshev(Val(1), i+1, x̃) * (i+1) - _chebyshev(Val(2), i, x̃) * x̃ ) / (x̃^2 - 1) * 2
+    @boundscheck i ≥ 0 && i < nbasis(C) || throw(BoundsError(C, i))
+    _chebyshev_derivative(Val(2), i, x̃) * 2
 end
 
 Base.getindex(D::ChebyshevDerivative, x::Number, j::Integer) = _eval(D, x, j)
