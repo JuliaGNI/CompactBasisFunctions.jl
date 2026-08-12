@@ -1,5 +1,5 @@
 
-import QuadratureRules: GaussLegendreQuadrature, LobattoLegendreQuadrature
+import QuadratureRules: gauss_legendre_nodes, lobatto_legendre_nodes
 
 """
 Lagrange basis on the interval [0..1].
@@ -41,8 +41,8 @@ end
 
 Lagrange(x::AbstractVector{T}) where {T} = Lagrange{T}(x)
 
-LagrangeGauß(n) = Lagrange(GaussLegendreQuadrature(n).nodes)
-LagrangeLobatto(n) = Lagrange(LobattoLegendreQuadrature(n).nodes)
+LagrangeGauß(n) = Lagrange(gauss_legendre_nodes(n))
+LagrangeLobatto(n) = Lagrange(lobatto_legendre_nodes(n))
 
 (L::Lagrange)(x::Number, j::Integer) = L.b[j](x)
 

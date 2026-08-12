@@ -1,5 +1,4 @@
 import ContinuumArrays: apply, MulQuasiMatrix
-import FastTransforms: chebyshevpoints
 import OffsetArrays: OffsetArray
 
 @testset "$(rpad("Chebyshev Basis Tests",80))" begin
