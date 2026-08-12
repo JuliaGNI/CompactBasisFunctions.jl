@@ -132,6 +132,23 @@ import QuadratureRules: gauss_legendre_nodes
     @test_throws ArgumentError Lagrange([1.0, 1.0])
     @test_throws ArgumentError Lagrange{Float64}([0.0, 0.25, 0.25])
 
+    # The check tests the product of the node differences, not the distinctness of the node
+    # list. `allunique` compares with `isequal`, under which 0.0 and -0.0 are distinct — yet
+    # their difference is zero, which is the whole point of the check, and the basis came out
+    # with an Inf denominator. Conversely a lone NaN or Inf node is `isequal` to nothing at
+    # all and passed straight through, poisoning every difference.
+    @test_throws ArgumentError Lagrange([0.0, -0.0])
+    @test_throws ArgumentError Lagrange([-0.0, 0.5, 0.0])
+    @test_throws ArgumentError Lagrange([0.0, NaN, 1.0])
+    @test_throws ArgumentError Lagrange([0.0, Inf])
+    @test_throws ArgumentError Lagrange([0.0, 0.5, -Inf, 1.0])
+
+    # repeated NaN was caught before, by `isequal(NaN, NaN)`, and still is
+    @test_throws ArgumentError Lagrange([NaN, NaN])
+
+    # ... while a legitimately signed zero among distinct nodes is fine
+    @test nodes(Lagrange([-0.0, 0.5, 1.0])) == [-0.0, 0.5, 1.0]
+
     # ... and the cardinal property Lᵢ(xⱼ) = δᵢⱼ holds for the node sets that are accepted.
     # Written against positions rather than index values, since Lagrange numbers its basis
     # functions from 1 where the other three bases number theirs from 0.

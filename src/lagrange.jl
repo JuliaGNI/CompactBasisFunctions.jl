@@ -28,9 +28,11 @@ julia> sum(l[0.3, j] for j in eachindex(l)) ≈ 1                   # partition 
 true
 ```
 
-The nodes must be **distinct**, since the denominators are products of their differences; a
-repeated node throws an `ArgumentError`. They need not be sorted, nor confined to ``[0,1]``,
-although the declared domain is ``[0,1]``.
+The nodes must be **distinct** and **finite**, since the denominators are products of their
+differences; anything that leaves such a product zero or non-finite throws an `ArgumentError`.
+That covers a repeated node, the pair `0.0` and `-0.0`, whose difference is zero although the
+two are not `isequal`, and a `NaN` or `Inf` node. They need not be sorted, nor confined to
+``[0,1]``, although the declared domain is ``[0,1]``.
 
 Which nodes to use matters: equidistant nodes make high-degree interpolation diverge near the
 endpoints (the Runge phenomenon), so the Gauß-Legendre and Lobatto-Legendre node sets are
@@ -61,9 +63,6 @@ struct Lagrange{T, BT, XT <: AbstractVector{T}} <: Basis{T}
     function Lagrange{T}(x::XT) where {T, XT <: SVector}
         n = length(x)
 
-        allunique(x) || throw(ArgumentError(
-            "the nodes of a Lagrange basis must be distinct, got $(x)"))
-
         denom = zeros(T, n)
         diffs = zeros(T, n, n)
 
@@ -75,6 +74,16 @@ struct Lagrange{T, BT, XT <: AbstractVector{T}} <: Basis{T}
                     p *= diffs[i,j]
                 end
             end
+
+            # the product of the node differences is what has to be invertible, so it is
+            # tested rather than the node list: `allunique` compares with `isequal`, which
+            # holds 0.0 and -0.0 to be distinct although their difference is zero, and lets
+            # a lone NaN through to poison every difference silently
+            iszero(p) && throw(ArgumentError(
+                "the nodes of a Lagrange basis must be distinct, got $(x)"))
+            isfinite(p) || throw(ArgumentError(
+                "the nodes of a Lagrange basis must be finite, got $(x)"))
+
             denom[i] = 1/p
         end
 

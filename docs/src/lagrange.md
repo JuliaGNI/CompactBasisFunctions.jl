@@ -153,6 +153,28 @@ julia> setprecision(BigFloat, 256) do
   [...]
   ```
 
+  What is tested is the product of the differences itself, not the distinctness of the node
+  list, because the two are not the same question. `0.0` and `-0.0` are distinct under
+  `isequal` — the comparison `allunique` uses — yet their difference is zero:
+
+  ```jldoctest
+  julia> allunique([0.0, -0.0])
+  true
+
+  julia> Lagrange([0.0, -0.0])
+  ERROR: ArgumentError: the nodes of a Lagrange basis must be distinct, got [0.0, -0.0]
+  [...]
+  ```
+
+- **The nodes must be finite.** A `NaN` or `Inf` node is `isequal` to nothing else and so
+  looks perfectly distinct, while poisoning every difference it takes part in:
+
+  ```jldoctest
+  julia> Lagrange([0.0, NaN, 1.0])
+  ERROR: ArgumentError: the nodes of a Lagrange basis must be finite, got [0.0, NaN, 1.0]
+  [...]
+  ```
+
 - **Indexing starts at 1**, unlike the other three bases.
 - **Equidistant nodes at high degree** will diverge; see [Choice of nodes](@ref).
 - The nodes are stored in an `SVector`, so the number of nodes is part of the type. Building
