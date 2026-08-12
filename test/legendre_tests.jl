@@ -138,7 +138,8 @@ import QuadratureRules: GaussLegendreQuadrature, weights
 
     # the recurrences used to descend into two subproblems per step, so a single value cost
     # O(φʲ): 571 µs at n=25 and unusable beyond. The bound is far above what iteration
-    # needs (~470 ns at n=80) and far below what recursion would take.
+    # needs (~470 ns at n=80) and far below what recursion would take. A liveness check
+    # rather than a benchmark, cf. the same guard in bernstein_tests.jl.
     b = Legendre(80)
     db = Derivative(axes(b,1))
     b[0.3, 79]; (db*b)[0.3, 79]

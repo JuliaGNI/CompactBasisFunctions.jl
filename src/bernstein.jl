@@ -86,7 +86,8 @@ struct Bernstein{T, BT} <: Basis{T}
 
     function Bernstein{T}(n::Integer) where {T}
         p = n-1
-        b = OffsetArray([y -> _bernstein(i, p, y) for i in 0:p], 0:p)
+        # evaluated in the wider of T and the argument type, cf. `_evaltype`
+        b = OffsetArray([y -> _bernstein(i, p, _evaltype(T, typeof(y))(y)) for i in 0:p], 0:p)
         new{T, typeof(b)}(b, n)
     end
 
@@ -123,9 +124,10 @@ Base.getindex(B::Bernstein, X::AbstractVector,  ::Colon) = [b(x) for x in X, b i
 
 ## Derivative
 
-function _eval_derivative(b::Bernstein, x, i::Int)
+function _eval_derivative(b::Bernstein{T}, x::DT, i::Int) where {T, DT}
     @boundscheck i ≥ 0 && i < b.n || throw(BoundsError(b, i))
-    (b.n-1) * ( _bernstein(i-1, b.n-2, x) - _bernstein(i, b.n-2, x) )
+    local x̃ = _evaltype(T, DT)(x)
+    (b.n-1) * ( _bernstein(i-1, b.n-2, x̃) - _bernstein(i, b.n-2, x̃) )
 end
 
 @simplify *(D::Derivative, B::Bernstein) = Mul(D,B)

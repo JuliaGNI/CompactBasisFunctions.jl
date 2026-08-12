@@ -144,6 +144,11 @@ import ContinuumArrays: apply, MulQuasiMatrix
     # the recurrence used to descend into two subproblems per step, so a single value cost
     # O(2^p): 2.3 µs at n=10, 45 ms at n=25, and unusable beyond. The bound here is far
     # above what the closed form needs (~150 ns) and far below what recursion would take.
+    #
+    # This is a liveness check, not a benchmark: at this degree the cost that would follow
+    # from a return to the recurrence exceeds any wall clock, so what is being asserted is
+    # that the evaluation finishes at all. Do not tighten the bound towards the measured
+    # cost — the four orders of magnitude of slack are what keep it off a loaded runner.
     b = Bernstein(60)
     b[0.3, 30]
     @test (@elapsed for _ in 1:100; b[0.3, 30]; end) < 1.0

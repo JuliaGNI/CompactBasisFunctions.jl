@@ -83,4 +83,52 @@ end
         end
     end
 
+
+    # An evaluation runs in the wider of the basis's element type and the argument's, so a
+    # basis of extended precision is not silently held to the precision of the point it is
+    # asked about. `Legendre{BigFloat}` used to run Bonnet's recurrence in Float64 and widen
+    # only the trailing sqrt(2j+1), returning a BigFloat accurate to Float64 and no further;
+    # `Bernstein` and `Chebyshev` returned a Float64 outright, although their derivatives
+    # already promoted. The assertion is that a Float64 argument gives exactly what its own
+    # exact BigFloat value gives — i.e. that the argument's type limits nothing.
+    setprecision(BigFloat, 256) do
+        for b in (Bernstein(BigFloat, 6), Legendre(BigFloat, 6),
+                  Chebyshev{1}(BigFloat, 6), Chebyshev{2}(BigFloat, 6),
+                  Lagrange(BigFloat[0, 1//5, 1//2, 4//5, 1]))
+            d = Derivative(axes(b, 1))
+
+            # 0.1 is here because the shift onto [-1,1] must happen after the conversion and
+            # not before: 2y-1 is exact in Float64 for y ≥ 0.25 by Sterbenz, so a test that
+            # only asks about such points passes even when the shift still runs at the
+            # argument's precision. At 0.1 it rounds, and the rounding is then frozen into
+            # the widened value.
+            for x in (0.1, 0.3, 0.75, 1.0), j in eachindex(b)
+                @test b[x, j] isa BigFloat
+                @test (d*b)[x, j] isa BigFloat
+
+                @test b[x, j] == b[BigFloat(x), j]
+                @test (d*b)[x, j] == (d*b)[BigFloat(x), j]
+
+                # basis(b)[j](x) == b[x,j] is documented, so the promotion has to live in
+                # the closures that `basis` hands out, not in `getindex`
+                @test basis(b)[j](x) == b[x, j]
+            end
+        end
+    end
+
+    # ... and the promotion only ever widens: an argument more precise than the basis keeps
+    # its own precision, as it did before
+    setprecision(BigFloat, 256) do
+        for b in (Bernstein(6), Legendre(6), ChebyshevT(6), ChebyshevU(6),
+                  Lagrange([0.0, 0.2, 0.5, 0.8, 1.0]))
+            d = Derivative(axes(b, 1))
+
+            @test b[BigFloat(3)/10, 1] isa BigFloat
+            @test b[0.3, 1] isa Float64
+
+            @test (d*b)[BigFloat(3)/10, 1] isa BigFloat
+            @test (d*b)[0.3, 1] isa Float64
+        end
+    end
+
 end

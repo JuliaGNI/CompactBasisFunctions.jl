@@ -7,6 +7,60 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Releases 
 not covered here; see the git history for those.
 
 
+## [0.3.1]
+
+### Fixed
+
+- **An evaluation now runs in the wider of the basis's element type and the argument's.** A basis
+  of extended precision reported a precision it did not carry:
+
+  ```julia
+  b = Legendre(BigFloat, 6)
+  b[0.3, 5] == b[BigFloat(0.3), 5]        # false before, true now
+  ```
+
+  `Legendre` widened only the trailing `√(2j+1)` factor and ran Bonnet's recurrence in the type of
+  the argument, so a `BigFloat` basis evaluated at a `Float64` point returned a `BigFloat` correct
+  to `1.3e-16` relative and no further. `Bernstein` and `Chebyshev` did not widen at all and
+  returned a `Float64` outright — although their derivative evaluators already promoted, so a
+  basis and its derivative disagreed about their own element type. This is the same class of bug
+  as the `Lagrange` buffer allocation fixed in 0.3.0.
+
+  All six evaluators now convert the argument first. The three that already promoted —
+  `Legendre`'s derivative and both of `Chebyshev`'s — did so only after the shift `2x-1` onto
+  ``[-1,1]``, which left the shift itself running at the argument's precision and then recorded
+  its rounding in more digits; the conversion now precedes the shift everywhere. That omission
+  is invisible for `x ≥ 0.25`, where `2x-1` is exact in `Float64`, so it takes a point such as
+  `0.1` to see it. `Lagrange` needed no change; it promotes elementwise against its own nodes.
+
+  The promotion only ever widens, so an argument more precise than the basis is untouched and
+  every value at matching precision is unchanged. What changes is the return type of `Bernstein`
+  and `Chebyshev` where `T` is wider than the argument, and the accuracy of `Legendre` there.
+
+- **`Lagrange` accepted node sets whose differences are degenerate.** The check used `allunique`,
+  which compares with `isequal`, and so asked a different question from the one that matters:
+
+  ```julia
+  allunique([0.0, -0.0])      # true — yet 0.0 - (-0.0) is 0.0
+  Lagrange([0.0, -0.0])       # accepted, denominators Inf
+  Lagrange([0.0, NaN, 1.0])   # accepted, every value NaN
+  ```
+
+  It now tests the differences that each denominator is built from, rejecting a vanishing one as
+  a repeated node and a non-finite node as such. Their product has to be representable too, and
+  distinct finite nodes can still overflow or underflow it — `Lagrange([0.0, 1e160, 2e160,
+  3e160])`, which used to come out with every denominator `0`, now says that the nodes are sound
+  and the product is not, and suggests rescaling them. Repeated nodes still throw as before,
+  repeated `NaN` still throws, and `-0.0` is still a perfectly good node among distinct ones.
+
+### Changed
+
+- `docs/Project.toml` drops its `[sources]` block: the documentation workflow already develops the
+  package from the checkout, and `[sources]` is understood only by Pkg 1.11 and later while this
+  package supports Julia 1.10. The root `Project.toml` dropped its own in 0.3.0 for the same
+  reason.
+
+
 ## [0.3.0]
 
 **This release is breaking.** Three numerical results change: the Chebyshev basis now lives on
@@ -217,4 +271,5 @@ defined here, the `FastTransforms` dependency is gone, and the lower bounds on J
   `GenericFFT` and `DSP` from the dependency tree.
 
 
-[0.3.0]: https://github.com/JuliaGNI/CompactBasisFunctions.jl/compare/v0.2.15...main
+[0.3.1]: https://github.com/JuliaGNI/CompactBasisFunctions.jl/compare/v0.3.0...main
+[0.3.0]: https://github.com/JuliaGNI/CompactBasisFunctions.jl/compare/v0.2.15...v0.3.0

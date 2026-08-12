@@ -229,7 +229,8 @@ import OffsetArrays: OffsetArray
 
     # the recurrences used to descend into two subproblems per step, so a single value cost
     # O(φʲ): 323 µs at n=25 and unusable beyond. The bound is far above what iteration
-    # needs (~200 ns at n=80) and far below what recursion would take.
+    # needs (~200 ns at n=80) and far below what recursion would take. A liveness check
+    # rather than a benchmark, cf. the same guard in bernstein_tests.jl.
     for kind in (1, 2)
         b = Chebyshev{kind}(80)
         db = Derivative(axes(b,1))

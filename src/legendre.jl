@@ -80,7 +80,11 @@ struct Legendre{T, LT} <: Basis{T}
 
     function Legendre{T}(n::Integer) where {T}
         p = n-1
-        b = OffsetArray([y -> _legendre(i, 2y-1) * sqrt(T(2i+1)) for i in 0:p], 0:p)
+        # the recurrence runs in the wider of T and the argument type, so that a basis of
+        # extended precision carries it into the value and not just into the factor below.
+        # The conversion has to come before the shift onto [-1,1], not after: 2y-1 rounds in
+        # the argument's type, and widening the rounded result freezes that error in.
+        b = OffsetArray([y -> _legendre(i, 2 * _evaltype(T, typeof(y))(y) - 1) * sqrt(T(2i+1)) for i in 0:p], 0:p)
         new{T, typeof(b)}(b, n)
     end
 
@@ -166,10 +170,12 @@ Evaluate derivative of Legendre polynomial on the interval [0..+1].
 """
 function _eval(D::LegendreDerivative, x::DT, j::Int) where {DT}
     @boundscheck j ≥ 0 && j < nbasis(D.B) || throw(BoundsError(D.B, j))
-    local T = promote_type(eltype(D.B), DT)
+    local T = _evaltype(eltype(D.B), DT)
     # the sqrt(2j+1) is part of the basis function, so it belongs to its derivative too;
-    # the 2 is the chain rule of the shift onto [0,1]
-    _legendre_derivative(j, T(2x-1)) * 2 * sqrt(T(2j+1))
+    # the 2 is the chain rule of the shift onto [0,1]. The argument is converted before the
+    # shift, so that 2x-1 is not rounded in the argument's type first, cf. `_evaltype`
+    local x̃ = T(x)
+    _legendre_derivative(j, 2x̃-1) * 2 * sqrt(T(2j+1))
 end
 
 Base.getindex(D::LegendreDerivative, x::Number, j::Integer) = _eval(D, x, j)

@@ -105,7 +105,10 @@ struct Chebyshev{kind, T, BT, XT <: AbstractVector{T}} <: Basis{T}
         # chebyshev_nodes returns the points on [0,1]; shift_nodes widens integer
         # element types, so convert back to keep XT <: AbstractVector{T}
         x = convert(Vector{T}, chebyshev_nodes(T, n, Val(kind)))
-        b = OffsetArray([y -> _chebyshev(Val(kind), i, 2y-1) for i in 0:p], 0:p)
+        # evaluated in the wider of T and the argument type, as the derivatives below are.
+        # The conversion precedes the shift onto [-1,1]: 2y-1 rounds in the argument's type,
+        # and widening the rounded result would freeze that error in.
+        b = OffsetArray([y -> _chebyshev(Val(kind), i, 2 * _evaltype(T, typeof(y))(y) - 1) for i in 0:p], 0:p)
         new{kind, T, typeof(b), typeof(x)}(b, x)
     end
 
@@ -222,7 +225,9 @@ Evaluate derivative of Chebyshev polynomial of the first kind on the interval [0
 """
 function _eval(D::ChebyshevTDerivative, x::DT, i::Int) where {DT}
     local C = D.B
-    local x̃ = promote_type(eltype(C), DT)(2x-1)
+    # converted before the shift onto [-1,1], so that 2x-1 is not rounded in the argument's
+    # type and the rounding then widened along with it, cf. `_evaltype`
+    local x̃ = 2 * _evaltype(eltype(C), DT)(x) - 1
     @boundscheck i ≥ 0 && i < nbasis(C) || throw(BoundsError(C, i))
     _chebyshev_derivative(Val(1), i, x̃) * 2
 end
@@ -232,7 +237,8 @@ Evaluate derivative of Chebyshev polynomial of the second kind on the interval [
 """
 function _eval(D::ChebyshevUDerivative, x::DT, i::Int) where {DT}
     local C = D.B
-    local x̃ = promote_type(eltype(C), DT)(2x-1)
+    # converted before the shift, as in the first-kind derivative above
+    local x̃ = 2 * _evaltype(eltype(C), DT)(x) - 1
     @boundscheck i ≥ 0 && i < nbasis(C) || throw(BoundsError(C, i))
     _chebyshev_derivative(Val(2), i, x̃) * 2
 end
