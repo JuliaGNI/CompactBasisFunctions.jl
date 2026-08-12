@@ -125,7 +125,7 @@ defined here, the `FastTransforms` dependency is gone, and the lower bounds on J
   which is the normal combination, since this package depends on QuadratureRules. All five are now
   imported from `GeometricBase`, which declares them method-free for exactly this purpose — the
   pattern `grid` already followed with `ContinuumArrays.grid`. Requires `GeometricBase` 0.14.8 and
-  `QuadratureRules` 0.1.11.
+  `QuadratureRules` 0.2.
 
   `nodes` and `nnodes` are exported now as well; `nbasis` remains this package's own, as nothing
   else in the ecosystem defines it.
@@ -189,7 +189,7 @@ defined here, the `FastTransforms` dependency is gone, and the lower bounds on J
 - **Compat bounds.** Julia moves from `1.6` to `1.10`, and the CI matrix now covers `1.10`, `1.12`
   and `^1.13.0-0` plus nightly. The accreted `ContinuumArrays` list `0.8, 0.9, …, 0.20` is trimmed
   to `0.18, 0.19, 0.20`. `GeometricBase` is a new dependency at `0.14.8`, and `QuadratureRules`
-  requires `0.1.11`, both for the shared accessors above. The missing `LinearAlgebra = "1"` and
+  requires `0.2`, both for the shared accessors above. The missing `LinearAlgebra = "1"` and
   `Test = "1"` bounds are added, `Random` joins the test target, and `docs/Project.toml` gains
   `Documenter = "1"` and `DocumenterCitations = "1"`.
 
