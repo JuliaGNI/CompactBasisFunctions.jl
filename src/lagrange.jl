@@ -14,11 +14,11 @@ struct Lagrange{T, BT, XT <: AbstractVector{T}} <: Basis{T}
 
     function Lagrange{T}(x::XT) where {T, XT <: SVector}
         n = length(x)
-        denom = zeros(n)
-        diffs = zeros(n,n)
+        denom = zeros(T, n)
+        diffs = zeros(T, n, n)
 
         for i in eachindex(x)
-            local p = 1
+            local p = one(T)
             for j in eachindex(x)
                 diffs[i,j] = x[i] - x[j]
                 if i ≠ j
