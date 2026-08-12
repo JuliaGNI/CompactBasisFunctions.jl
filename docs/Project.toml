@@ -10,3 +10,4 @@ CompactBasisFunctions = {path = ".."}
 [compat]
 Documenter = "1"
 DocumenterCitations = "1"
+QuadratureRules = "0.2"

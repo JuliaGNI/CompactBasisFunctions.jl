@@ -96,8 +96,8 @@ defined here, the `FastTransforms` dependency is gone, and the lower bounds on J
 
 - **Precompilation on Julia 1.13.** `QuadratureRules` 0.1.8 dropped `GenericLinearAlgebra`, whose
   unconditional definition of `LinearAlgebra.eigencopy_oftype(::UpperHessenberg, S)` collides with
-  the one Julia 1.13 provides, causing a method overwriting error. The `0.1.10` lower bound picks
-  that up.
+  the one Julia 1.13 provides, causing a method overwriting error. The `0.2` lower bound below
+  picks that up.
 
 - Regression tests for the numerical changes above, several of which no assertion covered: dropping
   a chain-rule factor, reverting the `zeros(T, …)` buffers, or omitting the Legendre normalisation
@@ -191,10 +191,12 @@ defined here, the `FastTransforms` dependency is gone, and the lower bounds on J
   to `0.18, 0.19, 0.20`. `GeometricBase` is a new dependency at `0.14.8`, and `QuadratureRules`
   requires `0.2`, both for the shared accessors above. The missing `LinearAlgebra = "1"` and
   `Test = "1"` bounds are added, `Random` joins the test target, and `docs/Project.toml` gains
-  `Documenter = "1"` and `DocumenterCitations = "1"`.
+  `DocumenterCitations = "1"` and `QuadratureRules = "0.2"` alongside the `Documenter = "1"` it
+  already carried.
 
-- All node generation goes through `QuadratureRules`, whose 0.1.10 release added the `*_points`
-  (on `[-1,+1]`) and `*_nodes` (on `[0,1]`) accessors:
+- All node generation goes through the `*_nodes` functions of `QuadratureRules`, which as of its
+  0.2 release return the nodes on `[0,1]` — the interval of every basis here — unless the
+  `interval` keyword asks for `[-1,+1]` instead:
 
   ```
   chebyshevpoints(T, n, Val(kind))    ->  chebyshev_nodes(T, n, Val(kind))
