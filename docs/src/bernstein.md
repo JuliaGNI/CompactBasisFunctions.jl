@@ -129,7 +129,7 @@ julia> sum((d*b)[0.42, j] for j in eachindex(b)) |> abs < 1e-14      # rows sum 
 true
 ```
 
-## Evaluation
+## Evaluation in closed form
 
 The two-index recurrence
 
@@ -138,9 +138,14 @@ B_{j,p} = (1-x) \, B_{j,p-1} + x \, B_{j-1,p-1}
 ```
 
 cannot be collapsed into a single upward sweep for one ``j``, so this basis is evaluated from
-the closed form instead, with the binomial coefficient accumulated as
-``\binom{p-j+k}{k}`` multiplying before dividing, so that every intermediate is an integer and
-each division is exact.
+the closed form instead, with the binomial coefficient accumulated as ``\binom{p-j+k}{k}``,
+multiplying before dividing. The partial products are integers, so in exact arithmetic every
+division comes out even; in `Float64` the accumulation reproduces `binomial(p, j)` exactly for
+``p \le 54``, and from ``p = 55`` the intermediate product outgrows the integers `Float64`
+represents exactly and the coefficient picks up rounding.
+
+Note that `/` promotes, so an integer element type does not survive the accumulation: the
+values are floating point whenever ``j \ge 1``.
 
 !!! warning "Changed in 0.3.0"
     Earlier versions descended the recurrence, which recomputes shared subtrees and cost
@@ -158,5 +163,5 @@ each division is exact.
 - Positivity and the convex-hull property hold **on ``[0,1]`` only**. Outside it the basis
   extrapolates and the functions do take negative values; see
   [Evaluation outside the domain](@ref).
-- The binomial coefficient is exact while it stays below ``2^{53}``, which covers any degree
-  at which this basis is numerically useful.
+- The binomial coefficient is exact in `Float64` up to ``p = 54``, which covers any degree at
+  which this basis is numerically useful; see [Evaluation in closed form](@ref) above.

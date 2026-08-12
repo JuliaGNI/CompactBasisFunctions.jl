@@ -253,7 +253,8 @@ B_{j,p} = (1-x) \, B_{j,p-1} + x \, B_{j-1,p-1}
 has two indices, so it cannot be collapsed into a single upward sweep for one ``j``; that
 basis is evaluated from the closed form
 ``B_{j,p}(x) = \binom{p}{j} x^j (1-x)^{p-j}`` instead, with the binomial coefficient
-accumulated so that every intermediate stays an integer.
+accumulated multiplicatively over integer partial products; see
+[Evaluation in closed form](@ref) for where that stops being exact.
 
 ## Bases as quasi-matrices
 

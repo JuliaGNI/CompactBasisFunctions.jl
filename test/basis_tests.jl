@@ -1,6 +1,29 @@
 
 import CompactBasisFunctions: Basis, nodes, nnodes
+import ContinuumArrays
 import ContinuumArrays: grid
+import GeometricBase
+
+@testset "$(rpad("Accessor bindings",80))" begin
+
+    # the accessors must be methods on the shared generics, not functions of our own, or
+    # loading CompactBasisFunctions together with another package of the ecosystem makes the
+    # exported names resolve to nothing. Everything else in this file passes just as well
+    # with five functions of our own, which is how the collision survived for so long.
+
+    @test CompactBasisFunctions.basis  === GeometricBase.basis
+    @test CompactBasisFunctions.degree === GeometricBase.degree
+    @test CompactBasisFunctions.nodes  === GeometricBase.nodes
+    @test CompactBasisFunctions.nnodes === GeometricBase.nnodes
+    @test CompactBasisFunctions.order  === GeometricBase.order
+
+    @test CompactBasisFunctions.grid   === ContinuumArrays.grid
+
+    # nbasis is ours: nothing else in the ecosystem declares it
+    @test parentmodule(CompactBasisFunctions.nbasis) == CompactBasisFunctions
+
+end
+
 
 @testset "$(rpad("Basis Tests",80))" begin
 

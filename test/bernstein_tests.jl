@@ -118,6 +118,29 @@ import ContinuumArrays: apply, MulQuasiMatrix
         end
     end
 
+    # the closed form accumulates the binomial coefficient as C(p-j+k, k), multiplying
+    # before dividing. The partial products are integers, so in exact arithmetic every
+    # division comes out even; in Float64 that holds up to p = 54, and at p = 55 the
+    # intermediate product outgrows the exactly representable integers. Pinned here
+    # because the docstring states the threshold.
+    function _binomial_accumulated(p, j)
+        c = 1.0
+        for k in 1:j
+            c = c * (p - j + k) / k
+        end
+        return c
+    end
+
+    for p in 0:54, j in 0:p
+        @test _binomial_accumulated(p, j) == Float64(binomial(big(p), big(j)))
+    end
+
+    @test any(_binomial_accumulated(55, j) != Float64(binomial(big(55), big(j))) for j in 0:55)
+
+    # ... and an integer element type does not survive the accumulation, since / promotes
+    @test CompactBasisFunctions._bernstein(0, 1, 2) === -1
+    @test CompactBasisFunctions._bernstein(1, 1, 2) === 2.0
+
     # the recurrence used to descend into two subproblems per step, so a single value cost
     # O(2^p): 2.3 µs at n=10, 45 ms at n=25, and unusable beyond. The bound here is far
     # above what the closed form needs (~150 ns) and far below what recursion would take.

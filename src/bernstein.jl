@@ -10,9 +10,14 @@ descending it recomputes shared subtrees and costs `O(2^p)` evaluations, which i
 value at `p = 24`.
 
 The binomial coefficient is accumulated as ``\\binom{p-j+k}{k}``, multiplying before
-dividing so that every intermediate is an integer and the division is exact. Values are
-exact while they stay below `2^53` for a floating-point `T`, which covers any degree at
-which a Bernstein basis is numerically useful.
+dividing: the partial products are integers, so in exact arithmetic every division comes
+out even. In `Float64` this reproduces `binomial(p, j)` exactly for `p ≤ 54`; from `p = 55`
+the intermediate product outgrows the integers `Float64` represents exactly and the
+coefficient picks up rounding. That covers any degree at which a Bernstein basis is
+numerically useful.
+
+Note that `/` promotes, so the accumulator leaves an integer `T`: the return type is
+floating point whenever `j ≥ 1`.
 
 Returns zero outside `0 ≤ j ≤ p`, which is what makes the `p = n-2` calls from the
 derivative work for `n = 1`.
