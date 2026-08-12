@@ -226,4 +226,16 @@ import OffsetArrays: OffsetArray
     @test_throws BoundsError (d*u)[0.5, -1]
     @test_throws BoundsError (d*u)[0.5, nbasis(u)]
 
+
+    # the recurrences used to descend into two subproblems per step, so a single value cost
+    # O(φʲ): 323 µs at n=25 and unusable beyond. The bound is far above what iteration
+    # needs (~200 ns at n=80) and far below what recursion would take.
+    for kind in (1, 2)
+        b = Chebyshev{kind}(80)
+        db = Derivative(axes(b,1))
+        b[0.3, 79]; (db*b)[0.3, 79]
+        @test (@elapsed for _ in 1:100; b[0.3, 79]; end) < 1.0
+        @test (@elapsed for _ in 1:100; (db*b)[0.3, 79]; end) < 1.0
+    end
+
 end

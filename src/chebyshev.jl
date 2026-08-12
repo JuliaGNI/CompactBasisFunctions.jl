@@ -5,32 +5,42 @@ import OffsetArrays: OffsetArray
 
 """
 Chebyshev polynomial of the first kind on the interval [-1..+1].
+
+Evaluated by iterating the three-term recurrence ``T_j = 2x T_{j-1} - T_{j-2}`` upwards.
+The recursive formulation of the same recurrence descends into two subproblems per step and
+recomputes shared subtrees, which costs `O(φʲ)` evaluations rather than `O(j)`.
 """
 @inline function _chebyshev(::Val{1}, j::Int, x::T) where {T}
-    if j < 0
-        return zero(T)
-    elseif j == 0
-        return one(T)
-    elseif j == 1
-        return x
-    else
-        return _chebyshev(Val(1), j-1, x) * 2x - _chebyshev(Val(1), j-2, x)
+    j < 0  && return zero(T)
+    j == 0 && return one(T)
+
+    local t₂ = one(T)
+    local t₁ = x
+
+    for _ in 2:j
+        t₂, t₁ = t₁, t₁ * 2x - t₂
     end
+
+    return t₁
 end
 
 """
 Chebyshev polynomial of the second kind on the interval [-1..+1].
+
+Evaluated by iterating ``U_j = 2x U_{j-1} - U_{j-2}``, cf. [`_chebyshev`](@ref).
 """
 @inline function _chebyshev(::Val{2}, j::Int, x::T) where {T}
-    if j < 0
-        return zero(T)
-    elseif j == 0
-        return one(T)
-    elseif j == 1
-        return 2x
-    else
-        return _chebyshev(Val(2), j-1, x) * 2x - _chebyshev(Val(2), j-2, x)
+    j < 0  && return zero(T)
+    j == 0 && return one(T)
+
+    local u₂ = one(T)
+    local u₁ = 2x
+
+    for _ in 2:j
+        u₂, u₁ = u₁, u₁ * 2x - u₂
     end
+
+    return u₁
 end
 
 

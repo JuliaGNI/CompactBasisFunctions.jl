@@ -3,15 +3,23 @@ using OffsetArrays
 
 """
 Legendre polynomial on the interval [-1..+1].
+
+Evaluated by iterating Bonnet's recurrence ``j P_j = (2j-1) x P_{j-1} - (j-1) P_{j-2}``
+upwards. The recursive formulation of the same recurrence descends into two subproblems per
+step and recomputes shared subtrees, which costs `O(φʲ)` evaluations rather than `O(j)`.
 """
 @inline function _legendre(j::Int, x::T) where {T}
-    if j <= 0
-        return one(T)
-    elseif j == 1
-        return x
-    else
-        return ( (2j-1) * _legendre(j-1, x) * x - (j-1) * _legendre(j-2, x) ) / j
+    j < 0  && return zero(T)
+    j == 0 && return one(T)
+
+    local p₂ = one(T)
+    local p₁ = x
+
+    for k in 2:j
+        p₂, p₁ = p₁, ( (2k-1) * p₁ * x - (k-1) * p₂ ) / k
     end
+
+    return p₁
 end
 
 """
@@ -63,15 +71,32 @@ Base.getindex(L::Legendre, X::AbstractVector,  ::Colon) = [b(x) for x in X, b in
 
 """
 Derivative of Legendre polynomial on the interval [-1..+1].
+
+Obtained by differentiating Bonnet's recurrence term by term,
+
+```math
+j P_j' = (2j-1) P_{j-1} + (2j-1) x P_{j-1}' - (j-1) P_{j-2}' ,
+```
+
+and iterated upwards alongside ``P_j`` itself, which the right-hand side needs.
 """
 @inline function _legendre_derivative(j::Int, x::T) where {T}
-    if j <= 0
-        return zero(T)
-    elseif j == 1
-        return one(T)
-    else
-        return ( (2j-1) * _legendre(j-1, x) + (2j-1) * _legendre_derivative(j-1, x) * x - (j-1) * _legendre_derivative(j-2, x) ) / j
+    j <= 0 && return zero(T)
+    j == 1 && return one(T)
+
+    local p₂ = one(T)    # P_{k-2}
+    local p₁ = x         # P_{k-1}
+    local d₂ = zero(T)   # P_{k-2}'
+    local d₁ = one(T)    # P_{k-1}'
+
+    for k in 2:j
+        # evaluated before p₁ advances, since the derivative needs P_{k-1}
+        local d = ( (2k-1) * p₁ + (2k-1) * d₁ * x - (k-1) * d₂ ) / k
+        p₂, p₁ = p₁, ( (2k-1) * p₁ * x - (k-1) * p₂ ) / k
+        d₂, d₁ = d₁, d
     end
+
+    return d₁
 end
 
 @simplify *(D::Derivative, L::Legendre) = Mul(D,L)
