@@ -9,11 +9,145 @@ not covered here; see the git history for those.
 
 ## [0.3.0]
 
-**This release is breaking.** The Chebyshev basis now lives on `[0,1]` instead of `[-1,+1]`, so
-every Chebyshev node, basis function and derivative value changes. The `FastTransforms` dependency
-is gone, and the lower bounds on Julia, `ContinuumArrays` and `QuadratureRules` all move up.
+**This release is breaking.** Three numerical results change: the Chebyshev basis now lives on
+`[0,1]` instead of `[-1,+1]`, so every Chebyshev node, basis function and derivative value is
+different; the Legendre derivative gains the normalisation factor it was missing; and the
+`ChebyshevU` derivative returns finite values at the endpoints instead of `NaN`. The accessors
+`basis`, `degree`, `nodes`, `nnodes` and `order` are now extended from `GeometricBase` rather than
+defined here, the `FastTransforms` dependency is gone, and the lower bounds on Julia,
+`ContinuumArrays` and `QuadratureRules` all move up.
+
+### Added
+
+- **A manual.** The documentation was a single `index.md` containing `@autodocs`, which produced
+  almost nothing, because only the four basis structs carried docstrings — one line each — and the
+  accessors carried none. There are now a conceptual page on polynomial approximation, a page per
+  basis family, a usage page, a generated API reference and a bibliography, with every example a
+  `jldoctest` so the build verifies it. Docstrings are written for everything exported, for the six
+  derivative types and for the Vandermonde functions.
+
+- **This changelog.**
+
+### Fixed
+
+- **The Legendre derivative was missing the `√(2j+1)` normalisation** that its basis functions
+  carry, so `(d*Legendre(n))[x,j]` was not the derivative of `Legendre(n)[x,j]` — it was wrong by
+  exactly that factor for every `j > 0`:
+
+  ```julia
+  b = Legendre(4);  d = Derivative(axes(b,1))
+  (d*b)[0.37, 1]                             # 2.0        — before
+  (b[0.37+h, 1] - b[0.37-h, 1]) / 2h         # 3.4641… = 2√3
+  ```
+
+  The normalisation was introduced in v0.2.0 and the derivative was never updated with it.
+  Nothing in the test suite related the two — the basis assertions used `√(2j+1)` and the
+  derivative assertions used the unnormalised values, so each agreed with itself. The suite now
+  checks every basis against a central difference taken in 256-bit `BigFloat`; the other three
+  were already consistent.
+
+  This changes results for anyone differentiating a Legendre basis, which includes the CGVI and
+  DGVI integrators of GeometricIntegrators and NonlinearIntegrators.
+
+- **`(d*ChebyshevU(n))[x, j]` returned `NaN` at `x = 0` and `x = 1`** — the whole boundary of the
+  basis's own domain — for every `j`. The closed form
+  `U'ᵢ = ((i+1)Tᵢ₊₁ - x̃ Uᵢ) / (x̃² - 1)` is `0/0` at `x̃ = ±1`, although the derivative is a
+  polynomial and finite there. It is replaced by the differentiated recurrence
+  `U'ᵢ = 2Uᵢ₋₁ + 2x̃ U'ᵢ₋₁ - U'ᵢ₋₂`, which has no division and so no singularity. Interior values
+  are unchanged bit for bit, apart from cases that returned `-0.0` and now return `0.0`. The
+  existing tests checked interior points only, with a comment saying why.
+
+- **Every polynomial evaluator was exponential in the degree.** `_bernstein`, `_chebyshev`,
+  `_legendre` and `_legendre_derivative` each recursed into two subproblems per step and
+  recomputed shared subtrees. One evaluation, measured:
+
+  | n | Bernstein (mid index) | Legendre | ChebyshevT |
+  |---|---|---|---|
+  | 10 | 2.3 µs | 0.36 µs | 0.21 µs |
+  | 20 | 1.5 ms | 51 µs | 29 µs |
+  | 25 | **45 ms** | 571 µs | 323 µs |
+
+  Iterating the same recurrences upwards gives 120 ns, 196 ns and 119 ns at `n = 25`, growing
+  linearly thereafter. For Chebyshev and Legendre the per-step arithmetic and its order are
+  unchanged, so results are **bitwise identical**, verified over 840 values. Bernstein's
+  recurrence has two indices, so it is evaluated from the closed form `C(p,j) xʲ (1-x)^(p-j)`
+  instead; 241 of 1170 sampled values differ, by at most `4.7e-16` relative, and are on balance
+  closer to exact than the recursion they replace. Accuracy was never the problem — only the cost.
+
+- **`Lagrange` accepted duplicate nodes** and silently produced `Inf` in its denominators and
+  `NaN` on evaluation. It now throws an `ArgumentError` naming the nodes.
+
+- **`grid` on a modal basis** raised `MethodError: no method matching grid_axis(…)` from
+  ContinuumArrays' internals, naming nothing a caller could act on. `nodes`, `nnodes` and `grid`
+  now report that `Bernstein` and `Legendre` are modal bases and therefore have no nodes. The
+  generic stubs in `basis.jl` name the offending type instead of saying `"Not implemented!"`.
+
+- **`Lagrange` no longer loses precision above `Float64`.** The constructor allocated its buffers
+  with `zeros(n)` and `zeros(n,n)`, i.e. in `Float64` regardless of `T`, so
+  `diffs[i,j] = x[i] - x[j]` rounded every difference on assignment and `denom[i] = 1/p` rounded
+  again; the `denom::XT` and `diffs::Matrix{T}` fields then widened those `Float64` values back up.
+  A `Lagrange{BigFloat}` reported `BigFloat` while carrying only `Float64` precision, and since
+  `L.diffs` also feeds the derivative evaluation, derivatives were affected too. The buffers are
+  now allocated in `T`.
+
+  On 256-bit Gauss-Legendre nodes the maximum deviation of the basis from the exact cardinal
+  function drops from `2.7e-17` to below `1e-70`. `Float64` and `Float32` bases are unchanged in
+  value; `eltype(L.denom)` and `eltype(L.diffs)` now follow `T`.
+
+- **Precompilation on Julia 1.13.** `QuadratureRules` 0.1.8 dropped `GenericLinearAlgebra`, whose
+  unconditional definition of `LinearAlgebra.eigencopy_oftype(::UpperHessenberg, S)` collides with
+  the one Julia 1.13 provides, causing a method overwriting error. The `0.1.10` lower bound picks
+  that up.
+
+- Regression tests for the numerical changes above, several of which no assertion covered: dropping
+  a chain-rule factor, reverting the `zeros(T, …)` buffers, or omitting the Legendre normalisation
+  all left the suite green. Chebyshev now asserts that the nodes lie inside `axes(C,1)`, are
+  ascending and `n` in number, pins the two node vectors that changed, and checks basis and
+  derivative values against their closed forms at the endpoints as well as inside. Lagrange asserts
+  the cardinal property and the partition of unity, the latter to full `BigFloat` precision.
+  Bernstein is checked against the recurrence it no longer uses, evaluated in `BigFloat`. Every
+  basis is checked against a central difference, and each family has a cost guard at high degree.
+  `runtests.jl` seeds the RNG, so the `rand()` draws several files rely on are reproducible and the
+  Vandermonde tests cannot pass or fail by luck of the draw.
 
 ### Changed
+
+- **The accessors are extended from `GeometricBase`.** `basis`, `degree`, `nodes`, `nnodes` and
+  `order` were defined here, and independently in QuadratureRules, RungeKutta and the integrator
+  packages, so they were distinct functions that happened to share a name. Loading two of them
+  together made the name resolve to nothing:
+
+  ```julia
+  using QuadratureRules, CompactBasisFunctions
+  order(Legendre(3))    # UndefVarError: `order` not defined
+  ```
+
+  which is the normal combination, since this package depends on QuadratureRules. All five are now
+  imported from `GeometricBase`, which declares them method-free for exactly this purpose — the
+  pattern `grid` already followed with `ContinuumArrays.grid`. Requires `GeometricBase` 0.14.7 and
+  `QuadratureRules` 0.1.11.
+
+  `nodes` and `nnodes` are exported now as well; `nbasis` remains this package's own, as nothing
+  else in the ecosystem defines it.
+
+  Note that `basis` still collides with `ContinuumArrays`, which exports its own and means
+  something different by it: for a basis object ContinuumArrays returns the basis itself, where
+  this package returns the vector of basis functions. Qualify or import explicitly when loading
+  both.
+
+- **`Lagrange` no longer stores `vdminv`.** Every constructor filled it with
+  `vandermonde_matrix_inverse(x)` and nothing ever read it — not here, not in GeometricIntegrators,
+  RungeKutta, NonlinearIntegrators or MultiSymplectic — so each basis inverted a Vandermonde matrix
+  for nothing. The function itself stays.
+
+- Out-of-range basis indices throw `BoundsError` rather than `AssertionError`, so the derivative and
+  the basis agree on what an out-of-range index does.
+
+- `Bernstein` and `Legendre` gain the `isapprox` that `Chebyshev` and `Lagrange` already had.
+
+- `vandermonde_matrix_inverse` allocates in `T` rather than allocating `Float64` and converting —
+  the same class of bug as the `Lagrange` element-type fix above — so integer node vectors now work
+  instead of throwing `InexactError`.
 
 - **The Chebyshev basis is defined on `[0,1]`.** `Base.axes(C::Chebyshev)` already returned
   `(Inclusion(0..1), eachindex(C))`, while the nodes and the basis functions lived on `[-1,+1]`,
@@ -54,8 +188,10 @@ is gone, and the lower bounds on Julia, `ContinuumArrays` and `QuadratureRules` 
 
 - **Compat bounds.** Julia moves from `1.6` to `1.10`, and the CI matrix now covers `1.10`, `1.12`
   and `^1.13.0-0` plus nightly. The accreted `ContinuumArrays` list `0.8, 0.9, …, 0.20` is trimmed
-  to `0.18, 0.19, 0.20`. `QuadratureRules` requires `0.1.10`. The missing `LinearAlgebra = "1"` and
-  `Test = "1"` bounds are added, as is `Documenter = "1"` in `docs/Project.toml`.
+  to `0.18, 0.19, 0.20`. `GeometricBase` is a new dependency at `0.14.7`, and `QuadratureRules`
+  requires `0.1.11`, both for the shared accessors above. The missing `LinearAlgebra = "1"` and
+  `Test = "1"` bounds are added, `Random` joins the test target, and `docs/Project.toml` gains
+  `Documenter = "1"` and `DocumenterCitations = "1"`.
 
 - All node generation goes through `QuadratureRules`, whose 0.1.10 release added the `*_points`
   (on `[-1,+1]`) and `*_nodes` (on `[0,1]`) accessors:
@@ -71,32 +207,6 @@ is gone, and the lower bounds on Julia, `ContinuumArrays` and `QuadratureRules` 
 
 - Docstrings added for `Chebyshev`, for both `_chebyshev` helpers and for both Chebyshev derivative
   evaluators, each stating the interval it applies to.
-
-### Fixed
-
-- **`Lagrange` no longer loses precision above `Float64`.** The constructor allocated its buffers
-  with `zeros(n)` and `zeros(n,n)`, i.e. in `Float64` regardless of `T`, so
-  `diffs[i,j] = x[i] - x[j]` rounded every difference on assignment and `denom[i] = 1/p` rounded
-  again; the `denom::XT` and `diffs::Matrix{T}` fields then widened those `Float64` values back up.
-  A `Lagrange{BigFloat}` reported `BigFloat` while carrying only `Float64` precision, and since
-  `L.diffs` also feeds the derivative evaluation, derivatives were affected too. The buffers are
-  now allocated in `T`.
-
-  On 256-bit Gauss-Legendre nodes the maximum deviation of the basis from the exact cardinal
-  function drops from `2.7e-17` to below `1e-70`. `Float64` and `Float32` bases are unchanged in
-  value; `eltype(L.denom)` and `eltype(L.diffs)` now follow `T`.
-
-- **Precompilation on Julia 1.13.** `QuadratureRules` 0.1.8 dropped `GenericLinearAlgebra`, whose
-  unconditional definition of `LinearAlgebra.eigencopy_oftype(::UpperHessenberg, S)` collides with
-  the one Julia 1.13 provides, causing a method overwriting error. The `0.1.10` lower bound picks
-  that up.
-
-- Regression tests for both numerical changes above, neither of which was covered by a single
-  assertion before: dropping a chain-rule factor or reverting the `zeros(T, …)` buffers left the
-  suite green. Chebyshev now asserts that the nodes lie inside `axes(C,1)`, are ascending and `n`
-  in number, pins the two node vectors that changed, and checks basis and derivative values against
-  their closed forms, with the `i=2` branches pinning the chain-rule factor. Lagrange asserts the
-  partition of unity and its derivative to full `BigFloat` precision.
 
 ### Removed
 
