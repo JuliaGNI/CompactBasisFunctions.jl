@@ -1,19 +1,19 @@
 
 using LinearAlgebra
 
-vandermonde_matrix(x::Vector) = hcat([x.^(i-1) for i in 1:length(x)]...)
+vandermonde_matrix(x::Vector) = [x[i]^(j-1) for i in eachindex(x), j in eachindex(x)]
 vandermonde_matrix(x::AbstractVector{T}) where {T} = vandermonde_matrix(collect(x))
 
 
 function vandermonde_matrix_inverse(x::Vector{T}) where {T}
     local n = length(x)
-    local L::Matrix{T} = zeros(n,n)
-    local U::Matrix{T} = Matrix{T}(I, n, n)
+    local L = zeros(T, n, n)
+    local U = Matrix{T}(I, n, n)
 
-    L[1,1] = 1
+    L[1,1] = one(T)
     for i in 2:n
         for j in 1:i
-            p = 1
+            p = one(T)
             for k in 1:i
                 if k ≠ j
                     p *= (x[j] - x[k])
@@ -34,7 +34,7 @@ function vandermonde_matrix_inverse(x::Vector{T}) where {T}
         end
     end
 
-    return *(U,L)
+    return U * L
 end
 
 vandermonde_matrix_inverse(x::AbstractVector{T}) where {T} = vandermonde_matrix_inverse(collect(x))

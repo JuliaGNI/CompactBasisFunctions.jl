@@ -3,6 +3,9 @@ import QuadratureRules: gauss_legendre_nodes, lobatto_legendre_nodes
 
 """
 Lagrange basis on the interval [0..1].
+
+The nodes `x` must be distinct: the cardinal functions divide by the products of the node
+differences, so a repeated node makes them infinite.
 """
 struct Lagrange{T, BT, XT <: AbstractVector{T}} <: Basis{T}
     b::BT
@@ -10,10 +13,13 @@ struct Lagrange{T, BT, XT <: AbstractVector{T}} <: Basis{T}
 
     denom::XT
     diffs::Matrix{T}
-    vdminv::Matrix{T}
 
     function Lagrange{T}(x::XT) where {T, XT <: SVector}
         n = length(x)
+
+        allunique(x) || throw(ArgumentError(
+            "the nodes of a Lagrange basis must be distinct, got $(x)"))
+
         denom = zeros(T, n)
         diffs = zeros(T, n, n)
 
@@ -32,7 +38,7 @@ struct Lagrange{T, BT, XT <: AbstractVector{T}} <: Basis{T}
 
         b = collect(y -> sdenom[j] * mapreduce(i -> i ≠ j ? (y - x[i]) : one(T), *, eachindex(x)) for j in eachindex(sdenom))
 
-        new{T, typeof(b), typeof(x)}(b, x, sdenom, diffs, vandermonde_matrix_inverse(x))
+        new{T, typeof(b), typeof(x)}(b, x, sdenom, diffs)
     end
 
     Lagrange{T}(x::Vector) where {T} = Lagrange{T}(SVector{length(x),T}(x))

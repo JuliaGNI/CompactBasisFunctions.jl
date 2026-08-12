@@ -55,6 +55,10 @@ nbasis(B::Bernstein) = B.n
 order(B::Bernstein) = nbasis(B)
 degree(B::Bernstein) = nbasis(B) - 1
 
+nodes(B::Bernstein) = _no_nodes(B, "nodes")
+nnodes(B::Bernstein) = _no_nodes(B, "nnodes")
+ContinuumArrays.grid(B::Bernstein) = _no_nodes(B, "grid")
+
 Base.eltype(::Bernstein{T}) where {T} = T
 Base.eachindex(B::Bernstein) = eachindex(B.b)
 Base.axes(B::Bernstein) = (Inclusion(0..1), eachindex(B))
@@ -62,6 +66,7 @@ Base.axes(B::Bernstein) = (Inclusion(0..1), eachindex(B))
 Base.hash(B::Bernstein, h::UInt) = hash(B.n, h)
 Base.:(==)(B1::Bernstein, B2::Bernstein) = (B1.n == B2.n)
 Base.isequal(B1::Bernstein{T1}, B2::Bernstein{T2}) where {T1,T2} = (T1 == T2 && B1 == B2)
+Base.isapprox(B1::Bernstein, B2::Bernstein; kwargs...) = (B1.n == B2.n)
 
 Base.getindex(B::Bernstein, x::Number, j::Integer) = B(x,j)
 Base.getindex(B::Bernstein, x::Number,  ::Colon) = [b(x) for b in B.b]
@@ -71,8 +76,8 @@ Base.getindex(B::Bernstein, X::AbstractVector,  ::Colon) = [b(x) for x in X, b i
 
 ## Derivative
 
-function _eval_derivative(b::Bernstein{BT}, x::DT, i::Int) where {BT,DT}
-    @assert i ≥ 0 && i < b.n
+function _eval_derivative(b::Bernstein, x, i::Int)
+    @boundscheck i ≥ 0 && i < b.n || throw(BoundsError(b, i))
     (b.n-1) * ( _bernstein(i-1, b.n-2, x) - _bernstein(i, b.n-2, x) )
 end
 

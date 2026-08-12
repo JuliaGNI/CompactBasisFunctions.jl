@@ -40,18 +40,16 @@ end
 Legendre(::Type{T}, n::Integer) where {T} = Legendre{T}(n)
 Legendre(n::Integer) = Legendre(Float64, n)
 
-function _eval(L::Legendre{LT}, x::DT, j::Int) where {LT,DT}
-    local T = promote_type(LT, DT)
-    @assert j ≥ 0 && j < L.n
-    _legendre(j, 2x-1) * sqrt(T(2j+1))
-end
-
 (L::Legendre)(x::Number, j::Integer) = L.b[j](x)
 
 basis(L::Legendre) = L.b
 nbasis(L::Legendre) = L.n
 order(L::Legendre) = nbasis(L)
 degree(L::Legendre) = nbasis(L) - 1
+
+nodes(L::Legendre) = _no_nodes(L, "nodes")
+nnodes(L::Legendre) = _no_nodes(L, "nnodes")
+ContinuumArrays.grid(L::Legendre) = _no_nodes(L, "grid")
 
 Base.eltype(::Legendre{T}) where {T} = T
 Base.eachindex(L::Legendre) = eachindex(L.b)
@@ -60,6 +58,7 @@ Base.axes(L::Legendre) = (Inclusion(0..1), eachindex(L))
 Base.hash(L::Legendre, h::UInt) = hash(L.n, h)
 Base.:(==)(L1::Legendre, L2::Legendre) = (L1.n == L2.n)
 Base.isequal(L1::Legendre{T1}, L2::Legendre{T2}) where {T1,T2} = (T1 == T2 && L1 == L2)
+Base.isapprox(L1::Legendre, L2::Legendre; kwargs...) = (L1.n == L2.n)
 
 Base.getindex(L::Legendre, x::Number, j::Integer) = L(x,j)
 Base.getindex(L::Legendre, x::Number,  ::Colon) = [b(x) for b in L.b]
@@ -107,7 +106,7 @@ const LegendreDerivative = QMul2{<:Derivative,<:Legendre}
 Evaluate derivative of Legendre polynomial on the interval [0..+1].
 """
 function _eval(D::LegendreDerivative, x::DT, j::Int) where {DT}
-    @assert j ≥ 0 && j < nbasis(D.B)
+    @boundscheck j ≥ 0 && j < nbasis(D.B) || throw(BoundsError(D.B, j))
     _legendre_derivative(j, promote_type(eltype(D.B), DT)(2x-1)) * 2
 end
 
