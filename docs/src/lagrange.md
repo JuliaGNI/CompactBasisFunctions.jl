@@ -153,9 +153,9 @@ julia> setprecision(BigFloat, 256) do
   [...]
   ```
 
-  What is tested is the product of the differences itself, not the distinctness of the node
-  list, because the two are not the same question. `0.0` and `-0.0` are distinct under
-  `isequal` — the comparison `allunique` uses — yet their difference is zero:
+  What is tested is the differences themselves, not the node list under `isequal` — the
+  comparison `allunique` uses, and a different question from the one the denominators ask.
+  `0.0` and `-0.0` are distinct under `isequal`, yet their difference is zero:
 
   ```jldoctest
   julia> allunique([0.0, -0.0])
@@ -174,6 +174,21 @@ julia> setprecision(BigFloat, 256) do
   ERROR: ArgumentError: the nodes of a Lagrange basis must be finite, got [0.0, NaN, 1.0]
   [...]
   ```
+
+- **The product of the differences must be representable.** Nodes that are distinct and
+  finite can still multiply out to zero or to an infinity — packed into a narrow range the
+  product underflows, spread over a wide one it overflows — and either way the denominator
+  is unusable. The nodes are not at fault there, so the message says so and points at the
+  remedy:
+
+  ```jldoctest
+  julia> Lagrange([0.0, 1e160, 2e160, 3e160])
+  ERROR: ArgumentError: the nodes of a Lagrange basis are distinct and finite, but the product of the differences from node 1 is -Inf in Float64, so the denominator it gives is not usable; rescale the nodes or widen the element type
+  [...]
+  ```
+
+  Scaling such a node set to `[0,1]` and mapping the argument along with it is the way out;
+  a wider element type buys room too, but only a fixed amount of it.
 
 - **Indexing starts at 1**, unlike the other three bases.
 - **Equidistant nodes at high degree** will diverge; see [Choice of nodes](@ref).

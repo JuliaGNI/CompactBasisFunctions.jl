@@ -19,6 +19,12 @@ evaluated at a `Float64` point used to run Bonnet's recurrence entirely in `Floa
 only the trailing normalisation factor. The promotion never narrows: an argument wider than `T`
 keeps its own precision.
 
+The conversion has to come before any arithmetic on the argument, in particular before the
+shift `2x-1` onto ``[-1,1]`` that the Chebyshev and Legendre recurrences want. Converting the
+shifted value instead leaves the shift itself running in the argument's type, and widening its
+rounded result only records that rounding in more digits — `2x-1` is exact in `Float64` for
+`x ≥ 0.25`, so the omission hides from any test that samples only the upper part of the domain.
+
 For an abstract `T` such as the `Integer` of `ChebyshevU(Integer, 2)` this is an abstract type,
 and the conversion is then a no-op that leaves the argument as it is.
 """

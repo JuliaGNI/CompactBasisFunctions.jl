@@ -26,10 +26,12 @@ not covered here; see the git history for those.
   basis and its derivative disagreed about their own element type. This is the same class of bug
   as the `Lagrange` buffer allocation fixed in 0.3.0.
 
-  The four evaluators that lacked it — the `Legendre`, `Chebyshev` and `Bernstein` basis
-  functions, and `Bernstein`'s derivative — now convert the argument first, as
-  `Legendre`'s and `Chebyshev`'s derivatives already did. `Lagrange` needed no change; it
-  promotes elementwise against its own nodes.
+  All six evaluators now convert the argument first. The three that already promoted —
+  `Legendre`'s derivative and both of `Chebyshev`'s — did so only after the shift `2x-1` onto
+  ``[-1,1]``, which left the shift itself running at the argument's precision and then recorded
+  its rounding in more digits; the conversion now precedes the shift everywhere. That omission
+  is invisible for `x ≥ 0.25`, where `2x-1` is exact in `Float64`, so it takes a point such as
+  `0.1` to see it. `Lagrange` needed no change; it promotes elementwise against its own nodes.
 
   The promotion only ever widens, so an argument more precise than the basis is untouched and
   every value at matching precision is unchanged. What changes is the return type of `Bernstein`
@@ -44,9 +46,12 @@ not covered here; see the git history for those.
   Lagrange([0.0, NaN, 1.0])   # accepted, every value NaN
   ```
 
-  It now tests the product of the node differences that each denominator inverts, rejecting it
-  when zero or non-finite. Repeated nodes still throw as before, repeated `NaN` still throws, and
-  `-0.0` is still a perfectly good node among distinct ones.
+  It now tests the differences that each denominator is built from, rejecting a vanishing one as
+  a repeated node and a non-finite node as such. Their product has to be representable too, and
+  distinct finite nodes can still overflow or underflow it — `Lagrange([0.0, 1e160, 2e160,
+  3e160])`, which used to come out with every denominator `0`, now says that the nodes are sound
+  and the product is not, and suggests rescaling them. Repeated nodes still throw as before,
+  repeated `NaN` still throws, and `-0.0` is still a perfectly good node among distinct ones.
 
 ### Changed
 
@@ -54,10 +59,6 @@ not covered here; see the git history for those.
   package from the checkout, and `[sources]` is understood only by Pkg 1.11 and later while this
   package supports Julia 1.10. The root `Project.toml` dropped its own in 0.3.0 for the same
   reason.
-
-- The Documentation workflow no longer runs `doctest` as a step of its own. That step never called
-  `DocMeta.setdocmeta!`, so the doctests it ran had nothing in scope; `makedocs` runs them with the
-  correct setup in the step that follows.
 
 
 ## [0.3.0]

@@ -149,6 +149,31 @@ import QuadratureRules: gauss_legendre_nodes
     # ... while a legitimately signed zero among distinct nodes is fine
     @test nodes(Lagrange([-0.0, 0.5, 1.0])) == [-0.0, 0.5, 1.0]
 
+    # A degenerate product does not on its own say which fault produced it: nodes that are
+    # distinct and finite can still multiply out to zero or to an infinity, by underflow
+    # when they are packed into a narrow range and by overflow when they are spread over a
+    # wide one. Both used to give a silent Inf or 0 denominator; each is now rejected, and
+    # the message says the product is at fault rather than sending the reader to look for a
+    # repeated node that is not there.
+    @test_throws ArgumentError Lagrange(Float32.(range(0, 0.01, length=25)))
+    @test_throws ArgumentError Lagrange([0.0, 1e160, 2e160, 3e160])
+
+    for f in (() -> Lagrange(Float32.(range(0, 0.01, length=25))),
+              () -> Lagrange([0.0, 1e160, 2e160, 3e160]))
+        @test !occursin("must be distinct", (try f() catch e; e.msg end))
+        @test !occursin("must be finite",   (try f() catch e; e.msg end))
+    end
+
+    # ... and a repeated node is still reported as one even when the surviving differences
+    # overflow around it, so the diagnosis does not depend on which fault is noticed first
+    @test occursin("must be distinct",
+                   (try Lagrange([0.0, 1e200, -1e200, 0.0]) catch e; e.msg end))
+
+    # the same node sets are fine once they are scaled to where their product is
+    # representable, which is what the message suggests
+    @test nnodes(Lagrange(collect(range(0, 0.01, length=25)))) == 25
+    @test nnodes(Lagrange([0.0, 1.0, 2.0, 3.0])) == 4
+
     # ... and the cardinal property Lᵢ(xⱼ) = δᵢⱼ holds for the node sets that are accepted.
     # Written against positions rather than index values, since Lagrange numbers its basis
     # functions from 1 where the other three bases number theirs from 0.

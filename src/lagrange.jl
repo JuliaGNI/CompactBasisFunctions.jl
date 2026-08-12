@@ -78,11 +78,22 @@ struct Lagrange{T, BT, XT <: AbstractVector{T}} <: Basis{T}
             # the product of the node differences is what has to be invertible, so it is
             # tested rather than the node list: `allunique` compares with `isequal`, which
             # holds 0.0 and -0.0 to be distinct although their difference is zero, and lets
-            # a lone NaN through to poison every difference silently
-            iszero(p) && throw(ArgumentError(
+            # a lone NaN through to poison every difference silently.
+            #
+            # The three ways it can fail are told apart so that the message names the fault
+            # that is actually present. A degenerate product does not by itself say which:
+            # it is equally what an unrepresentable product of perfectly good nodes gives,
+            # and reporting that one as a repeated node sends the reader after the wrong
+            # thing. So the nodes are asked about first, and the product only carries what
+            # is left over.
+            any(j -> j ≠ i && iszero(diffs[i,j]), eachindex(x)) && throw(ArgumentError(
                 "the nodes of a Lagrange basis must be distinct, got $(x)"))
-            isfinite(p) || throw(ArgumentError(
+            all(isfinite, x) || throw(ArgumentError(
                 "the nodes of a Lagrange basis must be finite, got $(x)"))
+            (iszero(p) || !isfinite(p)) && throw(ArgumentError(
+                "the nodes of a Lagrange basis are distinct and finite, but the product of " *
+                "the differences from node $(i) is $(p) in $(T), so the denominator it " *
+                "gives is not usable; rescale the nodes or widen the element type"))
 
             denom[i] = 1/p
         end

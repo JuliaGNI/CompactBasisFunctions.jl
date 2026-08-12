@@ -97,7 +97,12 @@ end
                   Lagrange(BigFloat[0, 1//5, 1//2, 4//5, 1]))
             d = Derivative(axes(b, 1))
 
-            for x in (0.3, 0.75, 1.0), j in eachindex(b)
+            # 0.1 is here because the shift onto [-1,1] must happen after the conversion and
+            # not before: 2y-1 is exact in Float64 for y ≥ 0.25 by Sterbenz, so a test that
+            # only asks about such points passes even when the shift still runs at the
+            # argument's precision. At 0.1 it rounds, and the rounding is then frozen into
+            # the widened value.
+            for x in (0.1, 0.3, 0.75, 1.0), j in eachindex(b)
                 @test b[x, j] isa BigFloat
                 @test (d*b)[x, j] isa BigFloat
 
@@ -116,8 +121,13 @@ end
     setprecision(BigFloat, 256) do
         for b in (Bernstein(6), Legendre(6), ChebyshevT(6), ChebyshevU(6),
                   Lagrange([0.0, 0.2, 0.5, 0.8, 1.0]))
+            d = Derivative(axes(b, 1))
+
             @test b[BigFloat(3)/10, 1] isa BigFloat
             @test b[0.3, 1] isa Float64
+
+            @test (d*b)[BigFloat(3)/10, 1] isa BigFloat
+            @test (d*b)[0.3, 1] isa Float64
         end
     end
 
