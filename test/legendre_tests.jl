@@ -83,18 +83,18 @@ import QuadratureRules: GaussLegendreQuadrature, weights
     @test (d*l)[1.0, 0] == 0.0
     @test (d*l)[2.0, 0] == 0.0
 
-    @test (d*l)[0.0, 1] == 2.0
-    @test (d*l)[0.5, 1] == 2.0
-    @test (d*l)[1.0, 1] == 2.0
-    @test (d*l)[2.0, 1] == 2.0
+    @test (d*l)[0.0, 1] ==  2sqrt(3)
+    @test (d*l)[0.5, 1] ==  2sqrt(3)
+    @test (d*l)[1.0, 1] ==  2sqrt(3)
+    @test (d*l)[2.0, 1] ==  2sqrt(3)
 
     @test (d*l)[0, 0] == 0.0
     @test (d*l)[1, 0] == 0.0
     @test (d*l)[2, 0] == 0.0
 
-    @test (d*l)[0, 1] == 2.0
-    @test (d*l)[1, 1] == 2.0
-    @test (d*l)[2, 1] == 2.0
+    @test (d*l)[0, 1] ==  2sqrt(3)
+    @test (d*l)[1, 1] ==  2sqrt(3)
+    @test (d*l)[2, 1] ==  2sqrt(3)
 
 
     l = Legendre(3)
@@ -116,13 +116,13 @@ import QuadratureRules: GaussLegendreQuadrature, weights
     @test (d*l)[0.5, 0] ==  0.0
     @test (d*l)[1.0, 0] ==  0.0
 
-    @test (d*l)[0.0, 1] ==  2.0
-    @test (d*l)[0.5, 1] ==  2.0
-    @test (d*l)[1.0, 1] ==  2.0
+    @test (d*l)[0.0, 1] ==   2sqrt(3)
+    @test (d*l)[0.5, 1] ==   2sqrt(3)
+    @test (d*l)[1.0, 1] ==   2sqrt(3)
 
-    @test (d*l)[0.0, 2] == -6.0
+    @test (d*l)[0.0, 2] == -6sqrt(5)
     @test (d*l)[0.5, 2] ==  0.0
-    @test (d*l)[1.0, 2] == +6.0
+    @test (d*l)[1.0, 2] == +6sqrt(5)
 
 
     # the sqrt(2i+1) scaling makes the basis orthonormal on [0,1], i.e. the mass matrix

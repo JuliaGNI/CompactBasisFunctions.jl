@@ -22,8 +22,57 @@ step and recomputes shared subtrees, which costs `O(φʲ)` evaluations rather th
     return p₁
 end
 
-"""
-Legendre basis on the interval [0..+1].
+@doc raw"""
+    Legendre(n)
+    Legendre(T, n)
+
+The Legendre basis of `n` functions, i.e. of degree ``p = n-1``, on the interval ``[0,1]``,
+
+```math
+L_j(x) = \sqrt{2j+1} \, P_j(2x-1) , \qquad j = 0, \dots, p ,
+```
+
+indexed from `0`. `T` is the element type and defaults to `Float64`.
+
+The Legendre polynomials ``P_j`` are defined on ``[-1,+1]``, so the argument is shifted by
+``\tilde{x} = 2x-1``; see [The reference interval](@ref).
+
+The basis is *modal*: its coefficients are those of an expansion rather than values at
+points, so it has no [`nodes`](@ref) and no `grid`, and those accessors throw.
+
+The factor ``\sqrt{2j+1}`` makes the basis **orthonormal** on ``[0,1]``: since
+``\int_0^1 P_i(2x-1) P_j(2x-1) \, dx = \delta_{ij} / (2j+1)``,
+
+```math
+\int_0^1 L_i(x) \, L_j(x) \, dx = \delta_{ij} ,
+```
+
+so the mass matrix is the identity and the coefficients of a projection are just the inner
+products against the basis functions.
+
+```jldoctest
+julia> l = Legendre(3);
+
+julia> l[0.5, 0], l[0.5, 1], l[0.5, 2]      # the midpoint is x̃ = 0
+(1.0, 0.0, -1.118033988749895)
+
+julia> l[1.0, 1] ≈ sqrt(3)                  # L₁(1) = √3 P₁(1) = √3
+true
+
+julia> using QuadratureRules
+
+julia> quad = GaussLegendreQuadrature(8);
+
+julia> sum(weights(quad)[k] * l[nodes(quad)[k], 1]^2 for k in eachindex(nodes(quad))) ≈ 1
+true
+```
+
+The derivative follows from differentiating Bonnet's recurrence, with the chain-rule factor
+`2` from the shift, and is obtained as `Derivative(axes(l,1)) * l`; see
+[Derivatives](@ref).
+
+See also [`Bernstein`](@ref) for the other modal basis, and [Legendre basis](@ref) for the
+full discussion.
 """
 struct Legendre{T, LT} <: Basis{T}
     b::LT
@@ -100,6 +149,16 @@ end
 
 @simplify *(D::Derivative, L::Legendre) = Mul(D,L)
 
+"""
+    LegendreDerivative
+
+The type of `Derivative(axes(l,1)) * l` for a [`Legendre`](@ref) basis `l`, equivalently of
+`l'`.
+
+A lazy product: it stores the basis and evaluates the derivative on indexing, from the
+differentiated Bonnet recurrence with the chain-rule factor `2` of the shift onto ``[0,1]``.
+See [Derivatives](@ref).
+"""
 const LegendreDerivative = QMul2{<:Derivative,<:Legendre}
 
 """
@@ -107,7 +166,10 @@ Evaluate derivative of Legendre polynomial on the interval [0..+1].
 """
 function _eval(D::LegendreDerivative, x::DT, j::Int) where {DT}
     @boundscheck j ≥ 0 && j < nbasis(D.B) || throw(BoundsError(D.B, j))
-    _legendre_derivative(j, promote_type(eltype(D.B), DT)(2x-1)) * 2
+    local T = promote_type(eltype(D.B), DT)
+    # the sqrt(2j+1) is part of the basis function, so it belongs to its derivative too;
+    # the 2 is the chain rule of the shift onto [0,1]
+    _legendre_derivative(j, T(2x-1)) * 2 * sqrt(T(2j+1))
 end
 
 Base.getindex(D::LegendreDerivative, x::Number, j::Integer) = _eval(D, x, j)

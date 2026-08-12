@@ -39,4 +39,25 @@ import ContinuumArrays: grid
         @test grid(b) == nodes(b)
     end
 
+
+    # (d*b)[x,j] must really be the derivative of b[x,j], for every basis. This is checked
+    # against a central difference in BigFloat, so the step can be small enough that the
+    # comparison is sharp. The Legendre derivative used to drop the sqrt(2j+1) factor that
+    # its basis functions carry, and was wrong by exactly that factor for every j > 0;
+    # nothing related the two, so every direct assertion agreed with itself.
+    setprecision(BigFloat, 256) do
+        h = BigFloat(1) / 10^30
+
+        for b in (Bernstein(BigFloat, 5), Legendre(BigFloat, 5),
+                  Chebyshev{1}(BigFloat, 5), Chebyshev{2}(BigFloat, 5),
+                  Lagrange(BigFloat[0, 1//5, 1//2, 4//5, 1]))
+            d = Derivative(axes(b, 1))
+
+            for x in (BigFloat(1)/4, BigFloat(1)/3, BigFloat(7)/10), j in eachindex(b)
+                fd = (b[x+h, j] - b[x-h, j]) / 2h
+                @test isapprox(fd, (d*b)[x, j], atol=1e-25)
+            end
+        end
+    end
+
 end
