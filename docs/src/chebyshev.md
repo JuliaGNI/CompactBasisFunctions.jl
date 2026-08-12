@@ -154,6 +154,9 @@ InexactError
 The node values are computed in `BigFloat` by `QuadratureRules` and rounded once to `T`, so
 they are correctly rounded whatever `T` is.
 
+`T` also governs the arithmetic of an evaluation, which runs in the wider of `T` and the type
+of the point; see [Element types and precision](@ref).
+
 ## Pitfalls
 
 - **`ChebyshevU(1)` is an error**: second-kind points need ``n \ge 2``.

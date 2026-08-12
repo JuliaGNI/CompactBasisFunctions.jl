@@ -198,8 +198,28 @@ julia> setprecision(BigFloat, 256) do
 (BigFloat, BigFloat)
 ```
 
-For [`Chebyshev`](@ref) the element type must be able to *represent* the nodes, so an integer
-type generally fails at construction; see [Element type](@ref).
+Evaluation is carried out in the wider of the basis's element type and the type of the point,
+so the precision of the argument limits nothing. A `Float64` point on a `BigFloat` basis is
+converted first, and gives exactly what its own exact `BigFloat` value gives:
+
+```jldoctest
+julia> setprecision(BigFloat, 256) do
+           b = Legendre(BigFloat, 6)
+           b[0.3, 5] == b[BigFloat(0.3), 5], typeof(b[0.3, 5])
+       end
+(true, BigFloat)
+```
+
+The promotion only ever widens. A point more precise than the basis keeps its own precision,
+since nothing is gained by rounding it down:
+
+```jldoctest
+julia> typeof(Legendre(6)[BigFloat(3) / 10, 5])
+BigFloat
+```
+
+For [`Chebyshev`](@ref) the element type must additionally be able to *represent* the nodes, so
+an integer type generally fails at construction; see [Element type](@ref).
 
 ## Working alongside QuadratureRules and ContinuumArrays
 

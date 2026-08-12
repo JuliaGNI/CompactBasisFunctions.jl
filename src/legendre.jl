@@ -80,7 +80,9 @@ struct Legendre{T, LT} <: Basis{T}
 
     function Legendre{T}(n::Integer) where {T}
         p = n-1
-        b = OffsetArray([y -> _legendre(i, 2y-1) * sqrt(T(2i+1)) for i in 0:p], 0:p)
+        # the recurrence runs in the wider of T and the argument type, so that a basis of
+        # extended precision carries it into the value and not just into the factor below
+        b = OffsetArray([y -> _legendre(i, _evaltype(T, typeof(y))(2y-1)) * sqrt(T(2i+1)) for i in 0:p], 0:p)
         new{T, typeof(b)}(b, n)
     end
 

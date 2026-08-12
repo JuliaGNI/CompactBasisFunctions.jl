@@ -105,7 +105,8 @@ struct Chebyshev{kind, T, BT, XT <: AbstractVector{T}} <: Basis{T}
         # chebyshev_nodes returns the points on [0,1]; shift_nodes widens integer
         # element types, so convert back to keep XT <: AbstractVector{T}
         x = convert(Vector{T}, chebyshev_nodes(T, n, Val(kind)))
-        b = OffsetArray([y -> _chebyshev(Val(kind), i, 2y-1) for i in 0:p], 0:p)
+        # evaluated in the wider of T and the argument type, as the derivatives below already are
+        b = OffsetArray([y -> _chebyshev(Val(kind), i, _evaltype(T, typeof(y))(2y-1)) for i in 0:p], 0:p)
         new{kind, T, typeof(b), typeof(x)}(b, x)
     end
 
