@@ -35,7 +35,15 @@ end
 
 
 """
-Chebyshev basis on the interval [0..1].
+Chebyshev basis of the first (`kind = 1`) or second (`kind = 2`) kind on the interval [0..1].
+
+The basis functions are the Chebyshev polynomials evaluated at `2x-1`, and the nodes are the
+Chebyshev points shifted onto [0..1] and returned in ascending order.
+
+`T` is the element type of the nodes, and must be able to represent them. This means a
+floating-point type in general; an integer-like `T` only works in the special cases where the
+nodes are exactly representable, such as `ChebyshevU(Integer, 2)`, whose nodes are 0 and 1.
+Otherwise the constructor throws an `InexactError`.
 """
 struct Chebyshev{kind, T, BT, XT <: AbstractVector{T}} <: Basis{T}
     b::BT

@@ -1,5 +1,6 @@
 import ContinuumArrays: apply, MulQuasiMatrix
 import OffsetArrays: OffsetArray
+import QuadratureRules: gauss_legendre_nodes
 
 @testset "$(rpad("Lagrange Basis Tests",80))" begin
 
@@ -104,5 +105,25 @@ import OffsetArrays: OffsetArray
 
     @test (d*l)[1, 2] == 1.0
     @test (d*l)[2, 2] == 1.0
+
+
+    # the internal buffers must be built in T, not in Float64, otherwise an
+    # arbitrary-precision basis silently carries only Float64 precision
+    @test eltype(Lagrange{Float32}([0.0f0, 0.25f0, 1.0f0]).diffs) == Float32
+
+    setprecision(BigFloat, 256) do
+        lb = Lagrange(gauss_legendre_nodes(BigFloat, 4))
+        db = Derivative(axes(lb,1))
+
+        @test eltype(lb.denom) == BigFloat
+        @test eltype(lb.diffs) == BigFloat
+
+        z = BigFloat(1) / 7
+
+        # partition of unity, and its derivative, hold to full BigFloat precision;
+        # with Float64 buffers both deviate by ~1e-16
+        @test abs(sum(lb[z, j] for j in eachindex(lb)) - 1) < 1e-70
+        @test abs(sum((db*lb)[z, j] for j in eachindex(lb))) < 1e-70
+    end
 
 end

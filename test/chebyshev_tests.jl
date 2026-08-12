@@ -129,4 +129,74 @@ import OffsetArrays: OffsetArray
 
     @test z1 == z2 == z3 == z4
 
+
+    # the nodes live on [0,1], are ascending, and lie inside axes(C,1)
+    # (ChebyshevU is not defined for a single node, hence n ≥ 2)
+    for kind in (1, 2), n in 2:8
+        C = Chebyshev{kind}(n)
+        @test nnodes(C) == n
+        @test all(x -> x ∈ axes(C, 1), grid(C))
+        @test issorted(nodes(C))
+    end
+
+    @test nodes(ChebyshevT(2)) ≈ [(1 - sqrt(2)/2) / 2, (1 + sqrt(2)/2) / 2]
+    @test nodes(ChebyshevU(2)) == [0.0, 1.0]
+
+
+    # basis and derivative values in closed form, with x̃ = 2x-1
+    t = ChebyshevT(3)
+    u = ChebyshevU(3)
+    d = Derivative(axes(t,1))
+
+    @test t[0.0, 0] == 1.0
+    @test t[0.5, 0] == 1.0
+    @test t[1.0, 0] == 1.0
+
+    @test t[0.0, 1] == -1.0
+    @test t[0.5, 1] ==  0.0
+    @test t[1.0, 1] == +1.0
+
+    @test t[0.0, 2] == +1.0
+    @test t[0.5, 2] == -1.0
+    @test t[1.0, 2] == +1.0
+
+    # d/dx Tᵢ(2x-1) = 2i U_{i-1}(2x-1), so the i=2 branch is 16x-8
+    @test (d*t)[0.0, 0] == 0.0
+    @test (d*t)[0.5, 0] == 0.0
+    @test (d*t)[1.0, 0] == 0.0
+
+    @test (d*t)[0.0, 1] == 2.0
+    @test (d*t)[0.5, 1] == 2.0
+    @test (d*t)[1.0, 1] == 2.0
+
+    @test (d*t)[0.0, 2] == -8.0
+    @test (d*t)[0.5, 2] ==  0.0
+    @test (d*t)[1.0, 2] == +8.0
+
+    @test u[0.0, 0] == 1.0
+    @test u[0.5, 0] == 1.0
+    @test u[1.0, 0] == 1.0
+
+    @test u[0.0, 1] == -2.0
+    @test u[0.5, 1] ==  0.0
+    @test u[1.0, 1] == +2.0
+
+    @test u[0.0, 2] == +3.0
+    @test u[0.5, 2] == -1.0
+    @test u[1.0, 2] == +3.0
+
+    # d/dx Uᵢ(2x-1) is evaluated via a formula that is singular at x̃ = ±1,
+    # i.e. at x = 0 and x = 1, so only interior points are checked here
+    @test (d*u)[0.25, 0] == 0.0
+    @test (d*u)[0.50, 0] == 0.0
+    @test (d*u)[0.75, 0] == 0.0
+
+    @test (d*u)[0.25, 1] == 4.0
+    @test (d*u)[0.50, 1] == 4.0
+    @test (d*u)[0.75, 1] == 4.0
+
+    @test (d*u)[0.25, 2] == -8.0
+    @test (d*u)[0.50, 2] ==  0.0
+    @test (d*u)[0.75, 2] == +8.0
+
 end
