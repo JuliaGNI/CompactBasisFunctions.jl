@@ -1,8 +1,55 @@
 
 import QuadratureRules: gauss_legendre_nodes, lobatto_legendre_nodes
 
-"""
-Lagrange basis on the interval [0..1].
+@doc raw"""
+    Lagrange(x)
+    Lagrange{T}(x)
+
+The Lagrange basis on the nodes `x`, generally taken in the interval ``[0,1]``,
+
+```math
+\ell_j(x) = \prod_{i \neq j} \frac{x - x_i}{x_j - x_i} ,
+```
+
+indexed from `1`, unlike the other three bases, which are indexed from `0`.
+
+This is the *cardinal* basis of the nodes: ``\ell_j(x_i) = \delta_{ij}``, so the
+coefficients of an expansion are the values of the function at the nodes, and no linear
+system is needed to interpolate. The basis also forms a partition of unity,
+``\sum_j \ell_j(x) = 1``.
+
+```jldoctest
+julia> l = Lagrange([0.0, 0.5, 1.0]);
+
+julia> all(l[nodes(l)[i], j] ≈ (i == j) for i in 1:3, j in 1:3)   # ℓⱼ(xᵢ) = δᵢⱼ
+true
+
+julia> sum(l[0.3, j] for j in eachindex(l)) ≈ 1                   # partition of unity
+true
+```
+
+The nodes must be **distinct**, since the denominators are products of their differences; a
+repeated node throws an `ArgumentError`. They need not be sorted, nor confined to ``[0,1]``,
+although the declared domain is ``[0,1]``.
+
+Which nodes to use matters: equidistant nodes make high-degree interpolation diverge near the
+endpoints (the Runge phenomenon), so the Gauß-Legendre and Lobatto-Legendre node sets are
+provided as [`LagrangeGauß`](@ref) and [`LagrangeLobatto`](@ref); see
+[Choice of nodes](@ref).
+
+The element type `T` is taken from the nodes, and all internal quantities are formed in it,
+so an arbitrary-precision basis carries its full precision:
+
+```jldoctest
+julia> setprecision(BigFloat, 256) do
+           l = Lagrange(BigFloat[0, 1//4, 1])
+           abs(sum(l[BigFloat(1)/3, j] for j in eachindex(l)) - 1) < 1e-70
+       end
+true
+```
+
+See also [`Chebyshev`](@ref) for the other nodal basis, and [Lagrange basis](@ref) for the
+full discussion.
 """
 struct Lagrange{T, BT, XT <: AbstractVector{T}} <: Basis{T}
     b::BT
@@ -10,10 +57,13 @@ struct Lagrange{T, BT, XT <: AbstractVector{T}} <: Basis{T}
 
     denom::XT
     diffs::Matrix{T}
-    vdminv::Matrix{T}
 
     function Lagrange{T}(x::XT) where {T, XT <: SVector}
         n = length(x)
+
+        allunique(x) || throw(ArgumentError(
+            "the nodes of a Lagrange basis must be distinct, got $(x)"))
+
         denom = zeros(T, n)
         diffs = zeros(T, n, n)
 
@@ -32,7 +82,7 @@ struct Lagrange{T, BT, XT <: AbstractVector{T}} <: Basis{T}
 
         b = collect(y -> sdenom[j] * mapreduce(i -> i ≠ j ? (y - x[i]) : one(T), *, eachindex(x)) for j in eachindex(sdenom))
 
-        new{T, typeof(b), typeof(x)}(b, x, sdenom, diffs, vandermonde_matrix_inverse(x))
+        new{T, typeof(b), typeof(x)}(b, x, sdenom, diffs)
     end
 
     Lagrange{T}(x::Vector) where {T} = Lagrange{T}(SVector{length(x),T}(x))
@@ -41,7 +91,36 @@ end
 
 Lagrange(x::AbstractVector{T}) where {T} = Lagrange{T}(x)
 
+"""
+    LagrangeGauß(n)
+
+The [`Lagrange`](@ref) basis on the `n` Gauß-Legendre nodes of ``[0,1]``.
+
+These lie strictly inside the interval, which suits a basis whose expansion is integrated
+rather than matched at the boundary. Compare [`LagrangeLobatto`](@ref), whose nodes include
+the endpoints.
+
+```jldoctest
+julia> nodes(LagrangeGauß(2)) ≈ [(1 - 1/sqrt(3)) / 2, (1 + 1/sqrt(3)) / 2]
+true
+```
+"""
 LagrangeGauß(n) = Lagrange(gauss_legendre_nodes(n))
+
+"""
+    LagrangeLobatto(n)
+
+The [`Lagrange`](@ref) basis on the `n` Lobatto-Legendre nodes of ``[0,1]``.
+
+These include both endpoints, so an expansion has coefficients that are the boundary values
+themselves — what a method needs when it has to impose or read off conditions there.
+Compare [`LagrangeGauß`](@ref), whose nodes lie strictly inside.
+
+```jldoctest
+julia> nodes(LagrangeLobatto(3)) == [0.0, 0.5, 1.0]
+true
+```
+"""
 LagrangeLobatto(n) = Lagrange(lobatto_legendre_nodes(n))
 
 (L::Lagrange)(x::Number, j::Integer) = L.b[j](x)
@@ -73,6 +152,15 @@ Base.getindex(L::Lagrange, X::AbstractVector,  ::Colon) = [b(x) for x in X, b in
 
 @simplify *(D::Derivative, L::Lagrange) = Mul(D,L)
 
+"""
+    LagrangeDerivative
+
+The type of `Derivative(axes(l,1)) * l` for a [`Lagrange`](@ref) basis `l`, equivalently of
+`l'`.
+
+A lazy product: it stores the basis and evaluates the derivative on indexing, from the node
+differences the basis caches. See [Derivatives](@ref).
+"""
 const LagrangeDerivative = QMul2{<:Derivative,<:Lagrange}
 
 function _eval(D::LagrangeDerivative, x::DT, j::Int) where {DT}

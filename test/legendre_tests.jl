@@ -1,4 +1,6 @@
 import ContinuumArrays: apply, MulQuasiMatrix
+import LinearAlgebra: I
+import QuadratureRules: GaussLegendreQuadrature, weights
 
 @testset "$(rpad("Legendre Basis Tests",80))" begin
 
@@ -81,18 +83,18 @@ import ContinuumArrays: apply, MulQuasiMatrix
     @test (d*l)[1.0, 0] == 0.0
     @test (d*l)[2.0, 0] == 0.0
 
-    @test (d*l)[0.0, 1] == 2.0
-    @test (d*l)[0.5, 1] == 2.0
-    @test (d*l)[1.0, 1] == 2.0
-    @test (d*l)[2.0, 1] == 2.0
+    @test (d*l)[0.0, 1] ==  2sqrt(3)
+    @test (d*l)[0.5, 1] ==  2sqrt(3)
+    @test (d*l)[1.0, 1] ==  2sqrt(3)
+    @test (d*l)[2.0, 1] ==  2sqrt(3)
 
     @test (d*l)[0, 0] == 0.0
     @test (d*l)[1, 0] == 0.0
     @test (d*l)[2, 0] == 0.0
 
-    @test (d*l)[0, 1] == 2.0
-    @test (d*l)[1, 1] == 2.0
-    @test (d*l)[2, 1] == 2.0
+    @test (d*l)[0, 1] ==  2sqrt(3)
+    @test (d*l)[1, 1] ==  2sqrt(3)
+    @test (d*l)[2, 1] ==  2sqrt(3)
 
 
     l = Legendre(3)
@@ -114,12 +116,33 @@ import ContinuumArrays: apply, MulQuasiMatrix
     @test (d*l)[0.5, 0] ==  0.0
     @test (d*l)[1.0, 0] ==  0.0
 
-    @test (d*l)[0.0, 1] ==  2.0
-    @test (d*l)[0.5, 1] ==  2.0
-    @test (d*l)[1.0, 1] ==  2.0
+    @test (d*l)[0.0, 1] ==   2sqrt(3)
+    @test (d*l)[0.5, 1] ==   2sqrt(3)
+    @test (d*l)[1.0, 1] ==   2sqrt(3)
 
-    @test (d*l)[0.0, 2] == -6.0
+    @test (d*l)[0.0, 2] == -6sqrt(5)
     @test (d*l)[0.5, 2] ==  0.0
-    @test (d*l)[1.0, 2] == +6.0
+    @test (d*l)[1.0, 2] == +6sqrt(5)
+
+
+    # the sqrt(2i+1) scaling makes the basis orthonormal on [0,1], i.e. the mass matrix
+    # is the identity. Nothing asserted this, although it is the point of the scaling.
+    quad = GaussLegendreQuadrature(24)
+
+    for n in 1:8
+        b = Legendre(n)
+        M = [sum(weights(quad)[k] * b[nodes(quad)[k], i] * b[nodes(quad)[k], j]
+                 for k in eachindex(nodes(quad))) for i in eachindex(b), j in eachindex(b)]
+        @test parent(M) ≈ Matrix(I, n, n) atol=1e-13
+    end
+
+    # the recurrences used to descend into two subproblems per step, so a single value cost
+    # O(φʲ): 571 µs at n=25 and unusable beyond. The bound is far above what iteration
+    # needs (~470 ns at n=80) and far below what recursion would take.
+    b = Legendre(80)
+    db = Derivative(axes(b,1))
+    b[0.3, 79]; (db*b)[0.3, 79]
+    @test (@elapsed for _ in 1:100; b[0.3, 79]; end) < 1.0
+    @test (@elapsed for _ in 1:100; (db*b)[0.3, 79]; end) < 1.0
 
 end

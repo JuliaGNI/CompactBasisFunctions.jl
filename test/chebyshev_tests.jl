@@ -185,8 +185,6 @@ import OffsetArrays: OffsetArray
     @test u[0.5, 2] == -1.0
     @test u[1.0, 2] == +3.0
 
-    # d/dx Uᵢ(2x-1) is evaluated via a formula that is singular at x̃ = ±1,
-    # i.e. at x = 0 and x = 1, so only interior points are checked here
     @test (d*u)[0.25, 0] == 0.0
     @test (d*u)[0.50, 0] == 0.0
     @test (d*u)[0.75, 0] == 0.0
@@ -198,5 +196,46 @@ import OffsetArrays: OffsetArray
     @test (d*u)[0.25, 2] == -8.0
     @test (d*u)[0.50, 2] ==  0.0
     @test (d*u)[0.75, 2] == +8.0
+
+    # the endpoints x = 0 and x = 1 are where x̃ = ∓1, at which the closed form
+    # U'ᵢ = ((i+1)Tᵢ₊₁ - x̃ Uᵢ) / (x̃² - 1) is 0/0 and used to return NaN. The
+    # derivative is a polynomial and finite there, with U'ᵢ(±1) known in closed form.
+    u = ChebyshevU(6)
+    d = Derivative(axes(u,1))
+
+    @test [(d*u)[1.0, i] for i in eachindex(u)] == [2 * i*(i+1)*(i+2)//3 for i in eachindex(u)]
+    @test parent([(d*u)[1.0, i] for i in eachindex(u)]) == [0, 4, 16, 40, 80, 140]
+
+    @test [(d*u)[0.0, i] for i in eachindex(u)] == [2 * (-1)^(i+1) * i*(i+1)*(i+2)//3 for i in eachindex(u)]
+    @test parent([(d*u)[0.0, i] for i in eachindex(u)]) == [0, 4, -16, 40, -80, 140]
+
+    # ... and they are the limits of the interior values, not a separate branch
+    for i in eachindex(u)
+        @test (d*u)[1.0 - 1e-8, i] ≈ (d*u)[1.0, i] atol=1e-4
+        @test (d*u)[0.0 + 1e-8, i] ≈ (d*u)[0.0, i] atol=1e-4
+    end
+
+    # first-kind derivatives are finite at the endpoints too: T'ᵢ(±1) = ±... i²
+    t = ChebyshevT(6)
+    dt = Derivative(axes(t,1))
+
+    @test [(dt*t)[1.0, i] for i in eachindex(t)] == [2 * i^2 for i in eachindex(t)]
+    @test [(dt*t)[0.0, i] for i in eachindex(t)] == [2 * (-1)^(i+1) * i^2 for i in eachindex(t)]
+
+    # out-of-range basis indices are a BoundsError, as for the basis itself
+    @test_throws BoundsError (d*u)[0.5, -1]
+    @test_throws BoundsError (d*u)[0.5, nbasis(u)]
+
+
+    # the recurrences used to descend into two subproblems per step, so a single value cost
+    # O(φʲ): 323 µs at n=25 and unusable beyond. The bound is far above what iteration
+    # needs (~200 ns at n=80) and far below what recursion would take.
+    for kind in (1, 2)
+        b = Chebyshev{kind}(80)
+        db = Derivative(axes(b,1))
+        b[0.3, 79]; (db*b)[0.3, 79]
+        @test (@elapsed for _ in 1:100; b[0.3, 79]; end) < 1.0
+        @test (@elapsed for _ in 1:100; (db*b)[0.3, 79]; end) < 1.0
+    end
 
 end

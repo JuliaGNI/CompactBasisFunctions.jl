@@ -8,11 +8,16 @@ module CompactBasisFunctions
     # expands to a QuasiAdjoint method in this module, so it must be in scope
     import ContinuumArrays: Mul, QMul2, QuasiAdjoint, (..), @simplify
 
+    # extended in basis.jl rather than defined there, so that the packages of the ecosystem
+    # share one generic function per accessor instead of one per package. `grid` belongs to
+    # ContinuumArrays for the same reason; `nbasis` has no counterpart anywhere and is ours.
+    import GeometricBase: basis, degree, nnodes, nodes, order
+
     export Derivative, ℵ₁
 
     include("vandermonde_matrix.jl")
 
-    export Basis, basis, nbasis, grid, degree, order
+    export Basis, basis, nbasis, nodes, nnodes, grid, degree, order
 
     include("basis.jl")
 

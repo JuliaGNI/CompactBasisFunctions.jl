@@ -126,4 +126,23 @@ import QuadratureRules: gauss_legendre_nodes
         @test abs(sum((db*lb)[z, j] for j in eachindex(lb))) < 1e-70
     end
 
+
+    # duplicate nodes used to give denom = [-4.0, -Inf, -Inf, 4.0] and evaluate to NaN
+    @test_throws ArgumentError Lagrange([0.0, 0.5, 0.5, 1.0])
+    @test_throws ArgumentError Lagrange([1.0, 1.0])
+    @test_throws ArgumentError Lagrange{Float64}([0.0, 0.25, 0.25])
+
+    # ... and the cardinal property Lᵢ(xⱼ) = δᵢⱼ holds for the node sets that are accepted.
+    # Written against positions rather than index values, since Lagrange numbers its basis
+    # functions from 1 where the other three bases number theirs from 0.
+    for l in (LagrangeGauß(4), LagrangeLobatto(4), Lagrange([0.0, 0.1, 0.7, 1.0]))
+        xs  = collect(nodes(l))
+        idx = collect(eachindex(l))
+        @test length(xs) == length(idx)
+
+        for i in eachindex(idx), j in eachindex(xs)
+            @test l[xs[j], idx[i]] ≈ (i == j ? 1 : 0) atol=1e-14
+        end
+    end
+
 end

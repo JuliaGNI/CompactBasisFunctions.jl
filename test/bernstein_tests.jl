@@ -92,4 +92,60 @@ import ContinuumArrays: apply, MulQuasiMatrix
     @test (d*l)[1, 1] == +1.0
     @test (d*l)[2, 1] == +1.0
 
+
+    # the closed form agrees with the two-index recurrence it replaced, evaluated in
+    # BigFloat, and the out-of-range branch that the derivative relies on still holds
+    function _bernstein_ref(j, p, x::BigFloat)
+        (j < 0 || j > p) && return zero(BigFloat)
+        p == 0 && return one(BigFloat)
+        return _bernstein_ref(j, p-1, x) * (1-x) + _bernstein_ref(j-1, p-1, x) * x
+    end
+
+    setprecision(BigFloat, 256) do
+        for p in 0:12, j in -1:p+1, x in (-0.7, 0.0, 1//3, 0.5, 1.0, 1.7)
+            @test CompactBasisFunctions._bernstein(j, p, float(x)) ≈
+                  Float64(_bernstein_ref(j, p, BigFloat(x))) rtol=1e-13 atol=1e-14
+        end
+    end
+
+    # partition of unity, and its derivative, on every basis
+    for n in 1:12
+        b = Bernstein(n)
+        db = Derivative(axes(b,1))
+        for x in (0.0, 0.1, 0.5, 1//3, 1.0)
+            @test sum(b[float(x), j] for j in eachindex(b)) ≈ 1
+            @test abs(sum((db*b)[float(x), j] for j in eachindex(b))) < 1e-12
+        end
+    end
+
+    # the closed form accumulates the binomial coefficient as C(p-j+k, k), multiplying
+    # before dividing. The partial products are integers, so in exact arithmetic every
+    # division comes out even; in Float64 that holds up to p = 54, and at p = 55 the
+    # intermediate product outgrows the exactly representable integers. Pinned here
+    # because the docstring states the threshold.
+    function _binomial_accumulated(p, j)
+        c = 1.0
+        for k in 1:j
+            c = c * (p - j + k) / k
+        end
+        return c
+    end
+
+    for p in 0:54, j in 0:p
+        @test _binomial_accumulated(p, j) == Float64(binomial(big(p), big(j)))
+    end
+
+    @test any(_binomial_accumulated(55, j) != Float64(binomial(big(55), big(j))) for j in 0:55)
+
+    # ... and an integer element type does not survive the accumulation, since / promotes
+    @test CompactBasisFunctions._bernstein(0, 1, 2) === -1
+    @test CompactBasisFunctions._bernstein(1, 1, 2) === 2.0
+
+    # the recurrence used to descend into two subproblems per step, so a single value cost
+    # O(2^p): 2.3 µs at n=10, 45 ms at n=25, and unusable beyond. The bound here is far
+    # above what the closed form needs (~150 ns) and far below what recursion would take.
+    b = Bernstein(60)
+    b[0.3, 30]
+    @test (@elapsed for _ in 1:100; b[0.3, 30]; end) < 1.0
+
 end

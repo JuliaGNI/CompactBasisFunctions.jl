@@ -1,10 +1,11 @@
 name = "CompactBasisFunctions"
 uuid = "a09551c4-f815-4143-809e-dd1986753ba7"
-authors = ["Michael Kraus"]
 version = "0.3.0"
+authors = ["Michael Kraus"]
 
 [deps]
 ContinuumArrays = "7ae1f121-cc2c-504b-ac30-9b923412ae5c"
+GeometricBase = "9a0b12b7-583b-4f04-aa1f-d8551b6addc9"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 OffsetArrays = "6fe1bfb0-de20-5000-8ca7-80f57d26f881"
 QuadratureRules = "a08977f5-a20d-4b99-b11f-f5ea535e0575"
@@ -12,15 +13,18 @@ StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
 [compat]
 ContinuumArrays = "0.18, 0.19, 0.20"
+GeometricBase = "0.14.8"
 LinearAlgebra = "1"
 OffsetArrays = "1"
-QuadratureRules = "0.1.10"
+QuadratureRules = "0.2"
+Random = "1"
 StaticArrays = "1"
 Test = "1"
 julia = "1.10"
 
 [extras]
+Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Test"]
+test = ["Random", "Test"]
