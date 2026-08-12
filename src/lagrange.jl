@@ -1,5 +1,5 @@
 
-import QuadratureRules: GaussLegendreQuadrature, LobattoLegendreQuadrature
+import QuadratureRules: gauss_legendre_nodes, lobatto_legendre_nodes
 
 """
 Lagrange basis on the interval [0..1].
@@ -14,11 +14,11 @@ struct Lagrange{T, BT, XT <: AbstractVector{T}} <: Basis{T}
 
     function Lagrange{T}(x::XT) where {T, XT <: SVector}
         n = length(x)
-        denom = zeros(n)
-        diffs = zeros(n,n)
+        denom = zeros(T, n)
+        diffs = zeros(T, n, n)
 
         for i in eachindex(x)
-            local p = 1
+            local p = one(T)
             for j in eachindex(x)
                 diffs[i,j] = x[i] - x[j]
                 if i ≠ j
@@ -41,8 +41,8 @@ end
 
 Lagrange(x::AbstractVector{T}) where {T} = Lagrange{T}(x)
 
-LagrangeGauß(n) = Lagrange(GaussLegendreQuadrature(n).nodes)
-LagrangeLobatto(n) = Lagrange(LobattoLegendreQuadrature(n).nodes)
+LagrangeGauß(n) = Lagrange(gauss_legendre_nodes(n))
+LagrangeLobatto(n) = Lagrange(lobatto_legendre_nodes(n))
 
 (L::Lagrange)(x::Number, j::Integer) = L.b[j](x)
 
