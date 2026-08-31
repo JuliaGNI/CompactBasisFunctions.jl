@@ -2,7 +2,7 @@
 
 [![Stable Docs](https://img.shields.io/badge/docs-stable-blue.svg)](https://JuliaGNI.github.io/CompactBasisFunctions.jl/stable)
 [![Latest Docs](https://img.shields.io/badge/docs-latest-blue.svg)](https://JuliaGNI.github.io/CompactBasisFunctions.jl/latest)
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE.md)
 [![PkgEval Status](https://juliaci.github.io/NanosoldierReports/pkgeval_badges/C/CompactBasisFunctions.svg)](https://juliaci.github.io/NanosoldierReports/pkgeval_badges/C/CompactBasisFunctions.html)
 [![Build Status](https://github.com/JuliaGNI/CompactBasisFunctions.jl/workflows/CI/badge.svg)](https://github.com/JuliaGNI/CompactBasisFunctions.jl/actions)
 [![Coverage](https://codecov.io/gh/JuliaGNI/CompactBasisFunctions.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/JuliaGNI/CompactBasisFunctions.jl)
