@@ -34,7 +34,6 @@ derivative work for `n = 1`.
     return c * x^j * (1-x)^(p-j)
 end
 
-
 @doc raw"""
     Bernstein(n)
     Bernstein(T, n)
@@ -90,7 +89,6 @@ struct Bernstein{T, BT} <: Basis{T}
         b = OffsetArray([y -> _bernstein(i, p, _evaltype(T, typeof(y))(y)) for i in 0:p], 0:p)
         new{T, typeof(b)}(b, n)
     end
-
 end
 
 Bernstein(::Type{T}, n::Integer) where {T} = Bernstein{T}(n)
@@ -113,24 +111,23 @@ Base.axes(B::Bernstein) = (Inclusion(0..1), eachindex(B))
 
 Base.hash(B::Bernstein, h::UInt) = hash(B.n, h)
 Base.:(==)(B1::Bernstein, B2::Bernstein) = (B1.n == B2.n)
-Base.isequal(B1::Bernstein{T1}, B2::Bernstein{T2}) where {T1,T2} = (T1 == T2 && B1 == B2)
+Base.isequal(B1::Bernstein{T1}, B2::Bernstein{T2}) where {T1, T2} = (T1 == T2 && B1 == B2)
 Base.isapprox(B1::Bernstein, B2::Bernstein; kwargs...) = (B1.n == B2.n)
 
-Base.getindex(B::Bernstein, x::Number, j::Integer) = B(x,j)
-Base.getindex(B::Bernstein, x::Number,  ::Colon) = [b(x) for b in B.b]
-Base.getindex(B::Bernstein, X::AbstractVector, j::Integer) = B.(X,j)
-Base.getindex(B::Bernstein, X::AbstractVector,  ::Colon) = [b(x) for x in X, b in B.b]
-
+Base.getindex(B::Bernstein, x::Number, j::Integer) = B(x, j)
+Base.getindex(B::Bernstein, x::Number, ::Colon) = [b(x) for b in B.b]
+Base.getindex(B::Bernstein, X::AbstractVector, j::Integer) = B.(X, j)
+Base.getindex(B::Bernstein, X::AbstractVector, ::Colon) = [b(x) for x in X, b in B.b]
 
 ## Derivative
 
 function _eval_derivative(b::Bernstein{T}, x::DT, i::Int) where {T, DT}
     @boundscheck i ≥ 0 && i < b.n || throw(BoundsError(b, i))
     local x̃ = _evaltype(T, DT)(x)
-    (b.n-1) * ( _bernstein(i-1, b.n-2, x̃) - _bernstein(i, b.n-2, x̃) )
+    (b.n-1) * (_bernstein(i-1, b.n-2, x̃) - _bernstein(i, b.n-2, x̃))
 end
 
-@simplify *(D::Derivative, B::Bernstein) = Mul(D,B)
+@simplify *(D::Derivative, B::Bernstein) = Mul(D, B)
 
 """
     BernsteinDerivative
@@ -141,11 +138,17 @@ The type of `Derivative(axes(b,1)) * b` for a [`Bernstein`](@ref) basis `b`, equ
 A lazy product: it stores the basis and evaluates the derivative on indexing, so
 `(d*b)[x,j]` is ``B_{j,p}'(x)``. See [Derivatives](@ref).
 """
-const BernsteinDerivative = QMul2{<:Derivative,<:Bernstein}
+const BernsteinDerivative = QMul2{<:Derivative, <:Bernstein}
 
 Base.getindex(D::BernsteinDerivative, x::Number, j::Integer) = _eval_derivative(D.B, x, j)
-Base.getindex(D::BernsteinDerivative, x::Number,  ::Colon) = [_eval_derivative(D.B, x, j) for j in eachindex(D.B)]
-Base.getindex(D::BernsteinDerivative, X::AbstractVector, j::Integer) = [_eval_derivative(D.B, x, j) for x in X]
-Base.getindex(D::BernsteinDerivative, X::AbstractVector,  ::Colon) = [_eval_derivative(D.B, x, j) for x in X, j in eachindex(D.B)]
+function Base.getindex(D::BernsteinDerivative, x::Number, ::Colon)
+    [_eval_derivative(D.B, x, j) for j in eachindex(D.B)]
+end
+function Base.getindex(D::BernsteinDerivative, X::AbstractVector, j::Integer)
+    [_eval_derivative(D.B, x, j) for x in X]
+end
+function Base.getindex(D::BernsteinDerivative, X::AbstractVector, ::Colon)
+    [_eval_derivative(D.B, x, j) for x in X, j in eachindex(D.B)]
+end
 
-Base.adjoint(B::Bernstein) = Derivative(axes(B,1)) * B
+Base.adjoint(B::Bernstein) = Derivative(axes(B, 1)) * B

@@ -4,7 +4,6 @@ import LinearAlgebra: I
 import OffsetArrays: OffsetArray
 
 @testset "$(rpad("Vandermonde Matrix",80))" begin
-
     n = 5
     x = rand(n)
     A = vandermonde_matrix(x)
@@ -14,7 +13,7 @@ import OffsetArrays: OffsetArray
     @test inv(A) ≈ B
     @test inv(B) ≈ A
 
-    y = OffsetArray(x, 0:n-1)
+    y = OffsetArray(x, 0:(n - 1))
     C = vandermonde_matrix(y)
     D = vandermonde_matrix_inverse(y)
 
@@ -24,5 +23,4 @@ import OffsetArrays: OffsetArray
 
     @test A == C
     @test B == D
-
 end

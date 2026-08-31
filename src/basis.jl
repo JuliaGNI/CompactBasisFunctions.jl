@@ -6,8 +6,9 @@ Error for the accessors that a modal basis cannot answer: its coefficients are t
 expansion, not values at points, so it has no nodes and no grid. Saying so beats the
 `MethodError` about ContinuumArrays' `grid_axis` that `grid` would otherwise produce.
 """
-_no_nodes(b, f) =
+function _no_nodes(b, f)
     error("$(nameof(typeof(b))) is a modal basis and has no nodes, so $(f) is not defined for it.")
+end
 
 """
 The arithmetic an evaluation is carried out in: the wider of the basis's element type `T` and

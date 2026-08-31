@@ -69,9 +69,9 @@ struct Lagrange{T, BT, XT <: AbstractVector{T}} <: Basis{T}
         for i in eachindex(x)
             local p = one(T)
             for j in eachindex(x)
-                diffs[i,j] = x[i] - x[j]
+                diffs[i, j] = x[i] - x[j]
                 if i ≠ j
-                    p *= diffs[i,j]
+                    p *= diffs[i, j]
                 end
             end
 
@@ -86,7 +86,7 @@ struct Lagrange{T, BT, XT <: AbstractVector{T}} <: Basis{T}
             # and reporting that one as a repeated node sends the reader after the wrong
             # thing. So the nodes are asked about first, and the product only carries what
             # is left over.
-            any(j -> j ≠ i && iszero(diffs[i,j]), eachindex(x)) && throw(ArgumentError(
+            any(j -> j ≠ i && iszero(diffs[i, j]), eachindex(x)) && throw(ArgumentError(
                 "the nodes of a Lagrange basis must be distinct, got $(x)"))
             all(isfinite, x) || throw(ArgumentError(
                 "the nodes of a Lagrange basis must be finite, got $(x)"))
@@ -100,12 +100,14 @@ struct Lagrange{T, BT, XT <: AbstractVector{T}} <: Basis{T}
 
         sdenom = SVector{n}(denom)
 
-        b = collect(y -> sdenom[j] * mapreduce(i -> i ≠ j ? (y - x[i]) : one(T), *, eachindex(x)) for j in eachindex(sdenom))
+        b = collect(y -> sdenom[j] *
+                         mapreduce(i -> i ≠ j ? (y - x[i]) : one(T), *, eachindex(x))
+        for j in eachindex(sdenom))
 
         new{T, typeof(b), typeof(x)}(b, x, sdenom, diffs)
     end
 
-    Lagrange{T}(x::Vector) where {T} = Lagrange{T}(SVector{length(x),T}(x))
+    Lagrange{T}(x::Vector) where {T} = Lagrange{T}(SVector{length(x), T}(x))
     Lagrange{T}(x::AbstractVector) where {T} = Lagrange{T}(collect(x))
 end
 
@@ -149,7 +151,7 @@ basis(L::Lagrange) = L.b
 nodes(L::Lagrange) = L.x
 nbasis(L::Lagrange) = length(basis(L))
 nnodes(L::Lagrange) = length(nodes(L))
-order(L::Lagrange)  = nnodes(L)
+order(L::Lagrange) = nnodes(L)
 degree(L::Lagrange) = nnodes(L) - 1
 
 Base.eltype(::Lagrange{T}) where {T} = T
@@ -159,18 +161,17 @@ ContinuumArrays.grid(L::Lagrange) = nodes(L)
 
 Base.hash(L::Lagrange, h::UInt) = hash(L.x, h)
 Base.:(==)(L1::Lagrange, L2::Lagrange) = (L1.x == L2.x)
-Base.isequal(L1::Lagrange{T1}, L2::Lagrange{T2}) where {T1,T2} = (T1 == T2 && L1 == L2)
+Base.isequal(L1::Lagrange{T1}, L2::Lagrange{T2}) where {T1, T2} = (T1 == T2 && L1 == L2)
 Base.isapprox(L1::Lagrange, L2::Lagrange; kwargs...) = isapprox(L1.x, L2.x; kwargs...)
 
-Base.getindex(L::Lagrange, x::Number, j::Integer) = L(x,j)
-Base.getindex(L::Lagrange, x::Number,  ::Colon) = [b(x) for b in L.b]
-Base.getindex(L::Lagrange, X::AbstractVector, j::Integer) = L.(X,j)
-Base.getindex(L::Lagrange, X::AbstractVector,  ::Colon) = [b(x) for x in X, b in L.b]
-
+Base.getindex(L::Lagrange, x::Number, j::Integer) = L(x, j)
+Base.getindex(L::Lagrange, x::Number, ::Colon) = [b(x) for b in L.b]
+Base.getindex(L::Lagrange, X::AbstractVector, j::Integer) = L.(X, j)
+Base.getindex(L::Lagrange, X::AbstractVector, ::Colon) = [b(x) for x in X, b in L.b]
 
 ## Derivative
 
-@simplify *(D::Derivative, L::Lagrange) = Mul(D,L)
+@simplify *(D::Derivative, L::Lagrange) = Mul(D, L)
 
 """
     LagrangeDerivative
@@ -181,7 +182,7 @@ The type of `Derivative(axes(l,1)) * l` for a [`Lagrange`](@ref) basis `l`, equi
 A lazy product: it stores the basis and evaluates the derivative on indexing, from the node
 differences the basis caches. See [Derivatives](@ref).
 """
-const LagrangeDerivative = QMul2{<:Derivative,<:Lagrange}
+const LagrangeDerivative = QMul2{<:Derivative, <:Lagrange}
 
 function _eval(D::LagrangeDerivative, x::DT, j::Int) where {DT}
     local L = D.B
@@ -190,9 +191,9 @@ function _eval(D::LagrangeDerivative, x::DT, j::Int) where {DT}
 
     for l in eachindex(L)
         if l ≠ j
-            z = 1 / L.diffs[j,l]
+            z = 1 / L.diffs[j, l]
             for i in eachindex(L)
-                i ≠ j && i ≠ l ? z *= (x - L.x[i]) / L.diffs[j,i] : nothing
+                i ≠ j && i ≠ l ? z *= (x - L.x[i]) / L.diffs[j, i] : nothing
             end
             d += z
         end
@@ -201,8 +202,14 @@ function _eval(D::LagrangeDerivative, x::DT, j::Int) where {DT}
 end
 
 Base.getindex(D::LagrangeDerivative, x::Number, j::Integer) = _eval(D, x, j)
-Base.getindex(D::LagrangeDerivative, x::Number,  ::Colon) = [_eval(D, x, j) for j in eachindex(D.B)]
-Base.getindex(D::LagrangeDerivative, X::AbstractVector, j::Integer) = [_eval(D, x, j) for x in X]
-Base.getindex(D::LagrangeDerivative, X::AbstractVector,  ::Colon) = [_eval(D, x, j) for x in X, j in eachindex(D.B)]
+function Base.getindex(D::LagrangeDerivative, x::Number, ::Colon)
+    [_eval(D, x, j) for j in eachindex(D.B)]
+end
+function Base.getindex(D::LagrangeDerivative, X::AbstractVector, j::Integer)
+    [_eval(D, x, j) for x in X]
+end
+function Base.getindex(D::LagrangeDerivative, X::AbstractVector, ::Colon)
+    [_eval(D, x, j) for x in X, j in eachindex(D.B)]
+end
 
-Base.adjoint(L::Lagrange) = Derivative(axes(L,1)) * L
+Base.adjoint(L::Lagrange) = Derivative(axes(L, 1)) * L

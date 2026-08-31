@@ -9,14 +9,14 @@ upwards. The recursive formulation of the same recurrence descends into two subp
 step and recomputes shared subtrees, which costs `O(φʲ)` evaluations rather than `O(j)`.
 """
 @inline function _legendre(j::Int, x::T) where {T}
-    j < 0  && return zero(T)
+    j < 0 && return zero(T)
     j == 0 && return one(T)
 
     local p₂ = one(T)
     local p₁ = x
 
     for k in 2:j
-        p₂, p₁ = p₁, ( (2k-1) * p₁ * x - (k-1) * p₂ ) / k
+        p₂, p₁ = p₁, ((2k-1) * p₁ * x - (k-1) * p₂) / k
     end
 
     return p₁
@@ -84,10 +84,12 @@ struct Legendre{T, LT} <: Basis{T}
         # extended precision carries it into the value and not just into the factor below.
         # The conversion has to come before the shift onto [-1,1], not after: 2y-1 rounds in
         # the argument's type, and widening the rounded result freezes that error in.
-        b = OffsetArray([y -> _legendre(i, 2 * _evaltype(T, typeof(y))(y) - 1) * sqrt(T(2i+1)) for i in 0:p], 0:p)
+        b = OffsetArray(
+            [y -> _legendre(i, 2 * _evaltype(T, typeof(y))(y) - 1) * sqrt(T(2i+1))
+             for i in 0:p],
+            0:p)
         new{T, typeof(b)}(b, n)
     end
-
 end
 
 Legendre(::Type{T}, n::Integer) where {T} = Legendre{T}(n)
@@ -110,14 +112,13 @@ Base.axes(L::Legendre) = (Inclusion(0..1), eachindex(L))
 
 Base.hash(L::Legendre, h::UInt) = hash(L.n, h)
 Base.:(==)(L1::Legendre, L2::Legendre) = (L1.n == L2.n)
-Base.isequal(L1::Legendre{T1}, L2::Legendre{T2}) where {T1,T2} = (T1 == T2 && L1 == L2)
+Base.isequal(L1::Legendre{T1}, L2::Legendre{T2}) where {T1, T2} = (T1 == T2 && L1 == L2)
 Base.isapprox(L1::Legendre, L2::Legendre; kwargs...) = (L1.n == L2.n)
 
-Base.getindex(L::Legendre, x::Number, j::Integer) = L(x,j)
-Base.getindex(L::Legendre, x::Number,  ::Colon) = [b(x) for b in L.b]
-Base.getindex(L::Legendre, X::AbstractVector, j::Integer) = L.(X,j)
-Base.getindex(L::Legendre, X::AbstractVector,  ::Colon) = [b(x) for x in X, b in L.b]
-
+Base.getindex(L::Legendre, x::Number, j::Integer) = L(x, j)
+Base.getindex(L::Legendre, x::Number, ::Colon) = [b(x) for b in L.b]
+Base.getindex(L::Legendre, X::AbstractVector, j::Integer) = L.(X, j)
+Base.getindex(L::Legendre, X::AbstractVector, ::Colon) = [b(x) for x in X, b in L.b]
 
 ## Derivative
 
@@ -143,15 +144,15 @@ and iterated upwards alongside ``P_j`` itself, which the right-hand side needs.
 
     for k in 2:j
         # evaluated before p₁ advances, since the derivative needs P_{k-1}
-        local d = ( (2k-1) * p₁ + (2k-1) * d₁ * x - (k-1) * d₂ ) / k
-        p₂, p₁ = p₁, ( (2k-1) * p₁ * x - (k-1) * p₂ ) / k
+        local d = ((2k-1) * p₁ + (2k-1) * d₁ * x - (k-1) * d₂) / k
+        p₂, p₁ = p₁, ((2k-1) * p₁ * x - (k-1) * p₂) / k
         d₂, d₁ = d₁, d
     end
 
     return d₁
 end
 
-@simplify *(D::Derivative, L::Legendre) = Mul(D,L)
+@simplify *(D::Derivative, L::Legendre) = Mul(D, L)
 
 """
     LegendreDerivative
@@ -163,7 +164,7 @@ A lazy product: it stores the basis and evaluates the derivative on indexing, fr
 differentiated Bonnet recurrence with the chain-rule factor `2` of the shift onto ``[0,1]``.
 See [Derivatives](@ref).
 """
-const LegendreDerivative = QMul2{<:Derivative,<:Legendre}
+const LegendreDerivative = QMul2{<:Derivative, <:Legendre}
 
 """
 Evaluate derivative of Legendre polynomial on the interval [0..+1].
@@ -179,8 +180,14 @@ function _eval(D::LegendreDerivative, x::DT, j::Int) where {DT}
 end
 
 Base.getindex(D::LegendreDerivative, x::Number, j::Integer) = _eval(D, x, j)
-Base.getindex(D::LegendreDerivative, x::Number,  ::Colon) = [_eval(D, x, j) for j in eachindex(D.B)]
-Base.getindex(D::LegendreDerivative, X::AbstractVector, j::Integer) = [_eval(D, x, j) for x in X]
-Base.getindex(D::LegendreDerivative, X::AbstractVector,  ::Colon) = [_eval(D, x, j) for x in X, j in eachindex(D.B)]
+function Base.getindex(D::LegendreDerivative, x::Number, ::Colon)
+    [_eval(D, x, j) for j in eachindex(D.B)]
+end
+function Base.getindex(D::LegendreDerivative, X::AbstractVector, j::Integer)
+    [_eval(D, x, j) for x in X]
+end
+function Base.getindex(D::LegendreDerivative, X::AbstractVector, ::Colon)
+    [_eval(D, x, j) for x in X, j in eachindex(D.B)]
+end
 
-Base.adjoint(L::Legendre) = Derivative(axes(L,1)) * L
+Base.adjoint(L::Legendre) = Derivative(axes(L, 1)) * L
