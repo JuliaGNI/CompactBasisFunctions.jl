@@ -2,18 +2,9 @@ using CompactBasisFunctions
 using Documenter
 using DocumenterCitations
 
-# the Legendre and Lagrange examples integrate against a quadrature rule, and the
-# accessors are shared with QuadratureRules, so the doctests need it in scope
-using QuadratureRules
-
-DocMeta.setdocmeta!(
-    CompactBasisFunctions,
-    :DocTestSetup,
-    :(using CompactBasisFunctions;
-    using QuadratureRules;
-    import CompactBasisFunctions: vandermonde_matrix, vandermonde_matrix_inverse);
-    recursive = true
-)
+# What the doctests need in scope. Shared with the `doctest` job of `.github/workflows/CI.yml`,
+# which includes the same file, so a build and a doctest run cannot disagree.
+include(joinpath(@__DIR__, "doctestsetup.jl"))
 
 bib = CitationBibliography(joinpath(@__DIR__, "src", "references.bib"))
 
