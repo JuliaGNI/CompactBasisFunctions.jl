@@ -61,12 +61,12 @@ struct Lagrange{T, BT, XT <: AbstractVector{T}} <: NodalBasis{T}
     function Lagrange{T}(x::XT) where {T, XT <: SVector}
         n = length(x)
 
-        # a non-finite node poisons every difference it enters, and is `isequal` to nothing
-        # at all, so it is caught before the differences are formed — and before their
-        # product, so that the message names the fault that is actually present. A degenerate
-        # product does not by itself say which: it is equally what an unrepresentable product
-        # of perfectly good nodes gives, and reporting that one as a repeated node sends the
-        # reader after the wrong thing.
+        # a non-finite node poisons every difference it enters, so the distinctness test
+        # below cannot see it; it is caught before the differences are formed — and before
+        # their product, so that the message names the fault that is actually present. A
+        # degenerate product does not by itself say which: it is equally what an
+        # unrepresentable product of perfectly good nodes gives, and reporting that one as a
+        # repeated node sends the reader after the wrong thing.
         all(isfinite, x) || throw(ArgumentError(
             "the nodes of a Lagrange basis must be finite, got $(x)"))
 

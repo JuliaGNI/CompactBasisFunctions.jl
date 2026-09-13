@@ -32,8 +32,10 @@ their redundant `n` field, `Chebyshev` drops its fourth type parameter `XT`, and
   piracy, method ambiguities, stale and duplicated dependencies, undefined exports, unbound type
   parameters and Project.toml validity. All pass.
 
-- **Test coverage expanded:** the type hierarchy and the shared indexing; cross-family equality,
-  hash and isapprox; `BoundsError` at both ends for every basis and every derivative type; the
+- **Test coverage expanded:** the type hierarchy and the shared indexing; the expansion `b * c`,
+  which the README leads with and nothing covered; cross-family equality, hash and `isapprox`,
+  and what a tolerance means for each family; `BoundsError` at both ends for every basis and
+  every derivative type; the
   documented `InexactError` for an integer `Chebyshev` element type and the `n ≥ 2` requirement
   of the second kind; any `Integer` accepted as a basis size; and for the Vandermonde matrices
   their documented meaning (`V*c` are values, `V⁻¹*y` and `V\y` are monomial coefficients),
@@ -59,7 +61,9 @@ their redundant `n` field, `Chebyshev` drops its fourth type parameter `XT`, and
 - **Equality is defined once.** A basis is identified by its family together with the data that
   family is built from. Cross-family comparison now goes through the same path, so
   `Lagrange(nodes(ChebyshevU(3))) != ChebyshevU(3)` is asserted rather than falling out of the
-  absence of a method. Semantics per family are unchanged.
+  absence of a method. Semantics per family are unchanged, including that `isapprox` applies a
+  tolerance to the nodes of a nodal basis and none to the function count of a modal one:
+  `Bernstein(3) ≈ Bernstein(5)` is false at any `atol`.
 
 - **A basis size and a basis index may be any `Integer`, not only an `Int`.** `ChebyshevT(Int32(3))`
   used to raise a `MethodError`.

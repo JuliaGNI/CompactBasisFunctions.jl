@@ -50,16 +50,15 @@ The arithmetic an evaluation is carried out in: the wider of the basis's element
 the type `S` of the point it is evaluated at.
 
 A basis has to evaluate its recurrence in `T` even at an argument of lower precision, or it
-returns a value whose type claims a precision the value does not carry — a `Legendre{BigFloat}`
-evaluated at a `Float64` point used to run Bonnet's recurrence entirely in `Float64` and widen
-only the trailing normalisation factor. The promotion never narrows: an argument wider than `T`
-keeps its own precision.
+returns a value whose type claims a precision the value does not carry. The promotion never
+narrows: an argument wider than `T` keeps its own precision.
 
 The conversion has to come before any arithmetic on the argument, in particular before the
 shift `2x-1` onto ``[-1,1]`` that the Chebyshev and Legendre recurrences want. Converting the
 shifted value instead leaves the shift itself running in the argument's type, and widening its
-rounded result only records that rounding in more digits — `2x-1` is exact in `Float64` for
-`x ≥ 0.25`, so the omission hides from any test that samples only the upper part of the domain.
+rounded result only records that rounding in more digits. `2x-1` is exact in `Float64` for
+`x ≥ 0.25`, so such an omission hides from any test that samples only the upper part of the
+domain.
 
 For an abstract `T` such as the `Integer` of `ChebyshevU(Integer, 2)` this is an abstract type,
 and the conversion is then a no-op that leaves the argument as it is.
@@ -161,8 +160,14 @@ end
 function Base.isapprox(b1::PolynomialBasis, b2::PolynomialBasis; kwargs...)
     family1, data1 = _key(b1)
     family2, data2 = _key(b2)
-    family1 == family2 && isapprox(data1, data2; kwargs...)
+    family1 == family2 && _isapprox(data1, data2; kwargs...)
 end
+
+# a tolerance applies to the nodes of a nodal basis, and to nothing a modal basis is made of:
+# two Bernstein bases of different degree are not approximately the same basis, however loose
+# the tolerance, so the count is compared exactly and the keywords are dropped
+_isapprox(x1, x2; kwargs...) = isapprox(x1, x2; kwargs...)
+_isapprox(n1::Integer, n2::Integer; kwargs...) = n1 == n2
 
 (b::PolynomialBasis)(x::Number, j::Integer) = basis(b)[j](x)
 

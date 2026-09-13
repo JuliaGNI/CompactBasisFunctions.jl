@@ -6,8 +6,7 @@ import GeometricBase
 
 """
 The allocations of the scalar surface of a basis: one evaluation, one derivative evaluation,
-one application of `Derivative`, the counting accessors together, and the comparisons
-together.
+one application of `Derivative`, the counting accessors together and the comparisons together.
 
 Measured inside a function so that the basis arrives with a concrete type. A closure over a
 loop variable drawn from a heterogeneous tuple captures it as `Any`, and the dynamic call
@@ -18,16 +17,16 @@ function scalar_allocations(b)
     j = first(eachindex(b)) + 1
 
     evaluate() = b[0.3, j]
-    derivative() = (d * b)[0.3, j]
+    evaluate_derivative() = (d * b)[0.3, j]
     differentiate() = Derivative(axes(b, 1)) * b
-    count() = nbasis(b) + order(b) + degree(b) + length(eachindex(b))
+    counts() = nbasis(b) + order(b) + degree(b) + length(eachindex(b))
     compare() = hash(b) + UInt(b == b) + UInt(isequal(b, b)) + UInt(isapprox(b, b))
 
     # warm up: the first call in a process measures compilation
-    evaluate(), derivative(), differentiate(), count(), compare()
+    evaluate(), evaluate_derivative(), differentiate(), counts(), compare()
 
-    (evaluate = @allocated(evaluate()), derivative = @allocated(derivative()),
-        differentiate = @allocated(differentiate()), count = @allocated(count()),
+    (evaluate = @allocated(evaluate()), derivative = @allocated(evaluate_derivative()),
+        differentiate = @allocated(differentiate()), counts = @allocated(counts()),
         compare = @allocated(compare()))
 end
 
@@ -124,6 +123,31 @@ end
         @test !isequal(b1, b2)
         @test !isapprox(b1, b2)
         @test hash(b1) != hash(b2)
+    end
+
+    # a tolerance is a statement about nodes. A modal basis is built from a number of
+    # functions, which nothing makes approximate, so it compares exactly however loose the
+    # tolerance — forwarding the keywords there would make Bernstein(3) ≈ Bernstein(5).
+    @test isapprox(ChebyshevT(Float32, 3), ChebyshevT(3))
+    @test isapprox(Lagrange([0.0, 0.5, 1.0]), Lagrange([0.0, 0.5 + 1e-9, 1.0]), atol = 1e-6)
+    @test !isapprox(Lagrange([0.0, 0.5, 1.0]), Lagrange([0.0, 0.5 + 1e-3, 1.0]), atol = 1e-6)
+
+    @test isapprox(Bernstein(3), Bernstein(3), atol = 3)
+    @test !isapprox(Bernstein(3), Bernstein(5), atol = 3)
+    @test !isapprox(Legendre(3), Legendre(4), rtol = 0.5)
+
+    # a function in a basis is the lazy product of the basis with its coefficients, which
+    # materialises on indexing. This is the interface the README leads with, and the
+    # coefficients are indexed as the basis is — a vector whose axis does not match is a
+    # DimensionMismatch rather than a silent off-by-one.
+    for b in bases
+        c = [1 / (1 + j^2) for j in eachindex(b)]
+
+        @test (b * c)[0.3] ≈ sum(c[j] * b[0.3, j] for j in eachindex(b))
+
+        if first(eachindex(b)) == 0
+            @test_throws DimensionMismatch b * collect(parent(c))
+        end
     end
 
     # an index outside the basis is a BoundsError, for the basis and for its derivative
@@ -235,7 +259,7 @@ end
             @test a.evaluate == 0
             @test a.derivative == 0
             @test a.differentiate == 0
-            @test a.count == 0
+            @test a.counts == 0
             @test a.compare == 0
         end
     end
