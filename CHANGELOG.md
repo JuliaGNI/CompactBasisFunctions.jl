@@ -7,6 +7,75 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Releases 
 not covered here; see the git history for those.
 
 
+## [Unreleased] — targeting 0.4.0
+
+**This release is breaking.** Three internal type shapes change: `Bernstein` and `Legendre` drop
+their redundant `n` field, `Chebyshev` drops its fourth type parameter `XT`, and a
+`ContinuumArrays.Basis` subtype defined elsewhere that omits an accessor now gets the standard
+`MethodError` rather than this package's `ErrorException`. No numerical result changes.
+
+### Added
+
+- **A type hierarchy replaces four families of identical code.** `PolynomialBasis{T} <: Basis{T}`
+  is the common base; it splits into `NodalBasis{T}` (Chebyshev, Lagrange) and `ModalBasis{T}`
+  (Bernstein, Legendre). All four are exported and documented, as is `PolynomialBasisDerivative`,
+  the supertype of the four per-family derivative types. The accessors (`basis`, `nbasis`,
+  `order`, `degree`, `nodes`, `nnodes`, `grid`), the four indexing forms of a basis and of a
+  derivative, `eachindex`, `axes`, `adjoint`, the `@simplify` derivative product, and
+  `hash`/`==`/`isequal`/`isapprox` are each now defined once on the appropriate supertype instead
+  of once per family. Each family's own file keeps only what is peculiar to it: the recurrence,
+  the constructor, the derivative formula. `src/` is 104 lines shorter with the documentation of
+  the three new types included, and no numerical result changes — the kernels, the order of the
+  arithmetic and the argument-type promotion are all untouched.
+
+- **Aqua.jl joins the test suite** (`test/aqua_tests.jl`, `Aqua = "0.8"` in `[compat]`), checking
+  piracy, method ambiguities, stale and duplicated dependencies, undefined exports, unbound type
+  parameters and Project.toml validity. All pass.
+
+- **Test coverage expanded:** the type hierarchy and the shared indexing; cross-family equality,
+  hash and isapprox; `BoundsError` at both ends for every basis and every derivative type; the
+  documented `InexactError` for an integer `Chebyshev` element type and the `n ≥ 2` requirement
+  of the second kind; any `Integer` accepted as a basis size; and for the Vandermonde matrices
+  their documented meaning (`V*c` are values, `V⁻¹*y` and `V\y` are monomial coefficients),
+  element-type propagation through `Float32`, `Rational` and `BigFloat`, and the one-node case.
+
+- **Evaluation is asserted to be type stable and allocation-free.** `@inferred` on `b[x,j]` and
+  `(d*b)[x,j]`, and a zero-allocation assertion covering those two, `Derivative(axes(b,1)) * b`,
+  the counting accessors and the four comparisons, for every basis. Nothing on the scalar surface
+  allocates; the array-returning indexing forms allocate their result and are not covered. The
+  allocation assertions are skipped where a run forces `--check-bounds=yes`, under which the
+  counts mean nothing.
+
+### Changed
+
+- **The generic accessors are no longer type piracy.** The old fallbacks `basis`, `nodes`,
+  `nnodes`, `order`, `degree` were methods on ContinuumArrays' `Basis` for generics owned by
+  GeometricBase. They are now real implementations on `PolynomialBasis`, `NodalBasis` and
+  `ModalBasis`. Consequence for a caller: a `ContinuumArrays.Basis` subtype defined elsewhere
+  that does not implement an accessor now gets the ordinary `MethodError` rather than this
+  package's informative `ErrorException`. The modal bases' own error message — naming the basis
+  and explaining that it is modal and has no nodes — is unchanged.
+
+- **Equality is defined once.** A basis is identified by its family together with the data that
+  family is built from. Cross-family comparison now goes through the same path, so
+  `Lagrange(nodes(ChebyshevU(3))) != ChebyshevU(3)` is asserted rather than falling out of the
+  absence of a method. Semantics per family are unchanged.
+
+- **A basis size and a basis index may be any `Integer`, not only an `Int`.** `ChebyshevT(Int32(3))`
+  used to raise a `MethodError`.
+
+- **Housekeeping.** The two Chebyshev evaluation kernels collapse into one, the kinds differing
+  only in the seed, `T₁ = x` against `U₁ = 2x`; `vandermonde_matrix_inverse` loses the
+  special-cased first row and first column that its general formulas already produce — its results
+  are bit-identical to the previous implementation, checked for `n = 1` to `8`.
+
+- **The bounds check on a derivative index is explicit in every family.** It lived in three of
+  the four derivative evaluators; the fourth, `LagrangeDerivative`, let the index fall off the
+  matrix of node differences it caches, so the `BoundsError` named that matrix instead of the
+  basis. The check now sits in the shared `getindex`, which covers the vector form
+  `(d*b)[X, j]` as well.
+
+
 ## [0.3.1]
 
 ### Fixed

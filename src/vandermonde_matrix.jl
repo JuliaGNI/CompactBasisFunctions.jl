@@ -1,6 +1,4 @@
 
-using LinearAlgebra
-
 @doc raw"""
     vandermonde_matrix(x)
 
@@ -21,7 +19,7 @@ julia> vandermonde_matrix([0.0, 0.5, 1.0])
 See also [`vandermonde_matrix_inverse`](@ref) and [The Vandermonde matrix](@ref).
 """
 vandermonde_matrix(x::Vector) = [x[i]^(j-1) for i in eachindex(x), j in eachindex(x)]
-vandermonde_matrix(x::AbstractVector{T}) where {T} = vandermonde_matrix(collect(x))
+vandermonde_matrix(x::AbstractVector) = vandermonde_matrix(collect(x))
 
 @doc raw"""
     vandermonde_matrix_inverse(x)
@@ -52,33 +50,20 @@ function vandermonde_matrix_inverse(x::Vector{T}) where {T}
     local L = zeros(T, n, n)
     local U = Matrix{T}(I, n, n)
 
-    L[1, 1] = one(T)
-    for i in 2:n
+    for i in 1:n
         for j in 1:i
-            p = one(T)
-            for k in 1:i
-                if k ≠ j
-                    p *= (x[j] - x[k])
-                end
-            end
-            L[i, j] = 1/p
+            L[i, j] = 1 / prod(x[j] - x[k] for k in 1:i if k ≠ j; init = one(T))
         end
     end
 
-    i = 1
-    for j in (i + 1):n
-        U[i, j] = - U[i, j - 1] * x[j - 1]
-    end
-
-    for i in 2:n
+    # the first row has no predecessor to pick up, which is what the zero stands in for
+    for i in 1:n
         for j in (i + 1):n
-            U[i, j] = U[i - 1, j - 1] - U[i, j - 1] * x[j - 1]
+            U[i, j] = (i == 1 ? zero(T) : U[i - 1, j - 1]) - U[i, j - 1] * x[j - 1]
         end
     end
 
     return U * L
 end
 
-function vandermonde_matrix_inverse(x::AbstractVector{T}) where {T}
-    vandermonde_matrix_inverse(collect(x))
-end
+vandermonde_matrix_inverse(x::AbstractVector) = vandermonde_matrix_inverse(collect(x))

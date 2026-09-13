@@ -1,12 +1,47 @@
 
-_not_implemented(f, b) = error("$(f) is not implemented for $(typeof(b)).")
+@doc raw"""
+    PolynomialBasis{T} <: Basis{T}
+
+Supertype of the four bases of this package: a ContinuumArrays `Basis` of element type `T`,
+spanning the polynomials of degree ``\le p`` on the reference interval ``[0,1]``.
+
+A subtype stores its basis functions in a field `b`, indexed as the basis itself is, and
+inherits from here everything that follows from them — [`basis`](@ref), [`nbasis`](@ref),
+[`order`](@ref), [`degree`](@ref), `eachindex`, `axes`, the four indexing forms, equality and
+the derivative product — so that a family's own file holds only what is peculiar to it.
+
+The hierarchy splits by whether a basis carries nodes, into [`NodalBasis`](@ref) and
+[`ModalBasis`](@ref); see [Nodal and modal bases](@ref).
+"""
+abstract type PolynomialBasis{T} <: Basis{T} end
+
+@doc raw"""
+    NodalBasis{T} <: PolynomialBasis{T}
+
+A [`PolynomialBasis`](@ref) built from a set of nodes, which it stores in a field `x`:
+[`Lagrange`](@ref) and [`Chebyshev`](@ref).
+
+[`nodes`](@ref), [`nnodes`](@ref) and `grid` are answered from that field. See
+[Nodal and modal bases](@ref).
+"""
+abstract type NodalBasis{T} <: PolynomialBasis{T} end
+
+@doc raw"""
+    ModalBasis{T} <: PolynomialBasis{T}
+
+A [`PolynomialBasis`](@ref) without nodes: [`Bernstein`](@ref) and [`Legendre`](@ref).
+
+Its coefficients are those of an expansion rather than values at points, so [`nodes`](@ref),
+[`nnodes`](@ref) and `grid` have no answer and throw. See [Nodal and modal bases](@ref).
+"""
+abstract type ModalBasis{T} <: PolynomialBasis{T} end
 
 """
 Error for the accessors that a modal basis cannot answer: its coefficients are those of an
 expansion, not values at points, so it has no nodes and no grid. Saying so beats the
 `MethodError` about ContinuumArrays' `grid_axis` that `grid` would otherwise produce.
 """
-function _no_nodes(b, f)
+function _no_nodes(b::ModalBasis, f)
     error("$(nameof(typeof(b))) is a modal basis and has no nodes, so $(f) is not defined for it.")
 end
 
@@ -31,13 +66,8 @@ and the conversion is then a no-op that leaves the argument as it is.
 """
 @inline _evaltype(::Type{T}, ::Type{S}) where {T, S} = promote_type(T, S)
 
-# `nodes` and `nnodes` are deliberately left unimplemented for the modal bases, which have
-# no nodes at all; those carry their own methods with a message saying so. A generic
-# `grid(::Basis)` is not defined here on purpose: ContinuumArrays dispatches `grid` on
-# `Any`, so a method on its `Basis` supertype would also capture its own spline bases.
-
 @doc raw"""
-    basis(b::Basis)
+    basis(b::PolynomialBasis)
 
 Return the collection of basis functions of `b`, indexed as `b` itself is.
 
@@ -49,10 +79,41 @@ Note that ContinuumArrays exports a different `basis`, which for a basis object 
 basis itself. Loading both packages with `using` therefore makes the name ambiguous; qualify
 it, or import the one that is wanted.
 """
-basis(b::Basis) = _not_implemented("basis", b)
+basis(b::PolynomialBasis) = b.b
 
 @doc raw"""
-    nodes(b::Basis)
+    nbasis(b::PolynomialBasis)
+
+Return the number of basis functions of `b`, i.e. the length of [`basis`](@ref).
+
+This equals [`nnodes`](@ref) for the nodal bases, where each basis function belongs to one
+node, and is defined for the modal bases too, where `nnodes` is not.
+"""
+nbasis(b::PolynomialBasis) = length(basis(b))
+
+@doc raw"""
+    order(b::PolynomialBasis)
+
+Return the order of `b`, the number of basis functions, hence the number of coefficients an
+expansion in `b` has.
+
+`order(b) == nbasis(b)` and `order(b) == degree(b) + 1` for every basis here. The name is
+the one the ecosystem uses for the accuracy of an approximation: a basis of order ``p``
+spans the polynomials of degree ``\le p-1`` and so reproduces them exactly.
+"""
+order(b::PolynomialBasis) = nbasis(b)
+
+@doc raw"""
+    degree(b::PolynomialBasis)
+
+Return the degree of `b`, the highest polynomial degree it spans.
+
+`degree(b) == order(b) - 1 == nbasis(b) - 1` for every basis here.
+"""
+degree(b::PolynomialBasis) = nbasis(b) - 1
+
+@doc raw"""
+    nodes(b::NodalBasis)
 
 Return the nodes of `b`, the points ``x_i \in [0,1]`` that its construction is based on.
 
@@ -63,44 +124,98 @@ Defined for the nodal bases [`Lagrange`](@ref) and [`Chebyshev`](@ref). The moda
 See also [`nnodes`](@ref) for their number and `grid` for the same vector under the name
 ContinuumArrays uses.
 """
-nodes(b::Basis) = _not_implemented("nodes", b)
+nodes(b::NodalBasis) = b.x
 
 @doc raw"""
-    nbasis(b::Basis)
-
-Return the number of basis functions of `b`, i.e. the length of [`basis`](@ref).
-
-This equals [`nnodes`](@ref) for the nodal bases, where each basis function belongs to one
-node, and is defined for the modal bases too, where `nnodes` is not.
-"""
-nbasis(b::Basis) = _not_implemented("nbasis", b)
-
-@doc raw"""
-    nnodes(b::Basis)
+    nnodes(b::NodalBasis)
 
 Return the number of nodes of `b`, i.e. the length of [`nodes`](@ref).
 
 Defined only for the nodal bases; see [`nodes`](@ref).
 """
-nnodes(b::Basis) = _not_implemented("nnodes", b)
+nnodes(b::NodalBasis) = length(nodes(b))
 
-@doc raw"""
-    order(b::Basis)
+ContinuumArrays.grid(b::NodalBasis) = nodes(b)
 
-Return the order of `b`, the number of basis functions, hence the number of coefficients an
-expansion in `b` has.
+nodes(b::ModalBasis) = _no_nodes(b, "nodes")
+nnodes(b::ModalBasis) = _no_nodes(b, "nnodes")
+ContinuumArrays.grid(b::ModalBasis) = _no_nodes(b, "grid")
 
-`order(b) == nbasis(b)` and `order(b) == degree(b) + 1` for every basis here. The name is
-the one the ecosystem uses for the accuracy of an approximation: a basis of order ``p``
-spans the polynomials of degree ``\le p-1`` and so reproduces them exactly.
 """
-order(b::Basis) = _not_implemented("order", b)
+What a basis is made of: the family it belongs to, and the data that family is built from —
+the number of functions for a [`ModalBasis`](@ref), the nodes for a [`NodalBasis`](@ref).
+Two bases are equal when their keys are.
 
-@doc raw"""
-    degree(b::Basis)
-
-Return the degree of `b`, the highest polynomial degree it spans.
-
-`degree(b) == order(b) - 1 == nbasis(b) - 1` for every basis here.
+The family is part of the key so that bases of different families never compare equal, and
+the element type is not, so that `Bernstein(Float64, 3) == Bernstein(Integer, 3)`; `isequal`
+is what tells those two apart.
 """
-degree(b::Basis) = _not_implemented("degree", b)
+function _key end
+
+Base.hash(b::PolynomialBasis, h::UInt) = hash(_key(b), h)
+Base.:(==)(b1::PolynomialBasis, b2::PolynomialBasis) = _key(b1) == _key(b2)
+function Base.isequal(b1::PolynomialBasis, b2::PolynomialBasis)
+    eltype(b1) == eltype(b2) && b1 == b2
+end
+
+function Base.isapprox(b1::PolynomialBasis, b2::PolynomialBasis; kwargs...)
+    family1, data1 = _key(b1)
+    family2, data2 = _key(b2)
+    family1 == family2 && isapprox(data1, data2; kwargs...)
+end
+
+(b::PolynomialBasis)(x::Number, j::Integer) = basis(b)[j](x)
+
+Base.eachindex(b::PolynomialBasis) = eachindex(basis(b))
+Base.axes(b::PolynomialBasis) = (Inclusion(0..1), eachindex(b))
+
+Base.getindex(b::PolynomialBasis, x::Number, j::Integer) = b(x, j)
+Base.getindex(b::PolynomialBasis, x::Number, ::Colon) = [f(x) for f in basis(b)]
+Base.getindex(b::PolynomialBasis, X::AbstractVector, j::Integer) = b.(X, j)
+function Base.getindex(b::PolynomialBasis, X::AbstractVector, ::Colon)
+    [f(x) for x in X, f in basis(b)]
+end
+
+## Derivative
+
+@simplify *(D::Derivative, b::PolynomialBasis) = Mul(D, b)
+
+"""
+    PolynomialBasisDerivative
+
+The type of `Derivative(axes(b,1)) * b` for any [`PolynomialBasis`](@ref) `b`, equivalently
+of `b'`, and the supertype of the four per-family derivative types.
+
+A lazy product: it stores the basis and evaluates the derivative on indexing, in the same
+four forms as the basis itself. See [Derivatives](@ref).
+"""
+const PolynomialBasisDerivative = QMul2{<:Derivative, <:PolynomialBasis}
+
+Base.adjoint(b::PolynomialBasis) = Derivative(axes(b, 1)) * b
+
+"""
+Evaluate the derivative of basis function `j` of `D.B` at the point `x`, in the wider of the
+basis's element type and the argument's, cf. [`_evaltype`](@ref).
+
+One method per family, since the formula is what distinguishes them; the index is in range,
+having been checked by the `getindex` methods below, which are shared.
+"""
+function _eval end
+
+function Base.getindex(D::PolynomialBasisDerivative, x::Number, j::Integer)
+    @boundscheck j ∈ eachindex(D.B) || throw(BoundsError(D.B, j))
+    _eval(D, x, j)
+end
+
+function Base.getindex(D::PolynomialBasisDerivative, x::Number, ::Colon)
+    [_eval(D, x, j) for j in eachindex(D.B)]
+end
+
+function Base.getindex(D::PolynomialBasisDerivative, X::AbstractVector, j::Integer)
+    @boundscheck j ∈ eachindex(D.B) || throw(BoundsError(D.B, j))
+    [_eval(D, x, j) for x in X]
+end
+
+function Base.getindex(D::PolynomialBasisDerivative, X::AbstractVector, ::Colon)
+    [_eval(D, x, j) for x in X, j in eachindex(D.B)]
+end

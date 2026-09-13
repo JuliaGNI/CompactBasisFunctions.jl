@@ -137,6 +137,21 @@ import OffsetArrays: OffsetArray
     @test nodes(ChebyshevT(2)) ≈ [(1 - sqrt(2)/2) / 2, (1 + sqrt(2)/2) / 2]
     @test nodes(ChebyshevU(2)) == [0.0, 1.0]
 
+    # the element type has to represent the nodes, so an integer one throws unless they
+    # happen to be exact — which the docstring claims and nothing checked
+    @test_throws InexactError ChebyshevT(Int, 3)
+    @test_throws InexactError ChebyshevU(Int, 3)
+    @test nodes(ChebyshevU(Integer, 2)) == [0, 1]
+
+    # the nodes of the second kind are the extrema of T_{n-1}, of which there is no set of
+    # one; the first kind has the root of T_1
+    @test_throws ErrorException ChebyshevU(1)
+    @test nnodes(ChebyshevT(1)) == 1
+
+    # any Integer is a size, not just an Int
+    @test ChebyshevT(Int32(3)) == ChebyshevT(3)
+    @test ChebyshevU(Float32, Int32(3)) == ChebyshevU(Float32, 3)
+
     # basis and derivative values in closed form, with x̃ = 2x-1
     t = ChebyshevT(3)
     u = ChebyshevU(3)

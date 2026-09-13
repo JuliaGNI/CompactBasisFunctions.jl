@@ -7,6 +7,7 @@ using Test
 # on one run and pass on the next
 Random.seed!(0x6a1d3f2e)
 
+include("aqua_tests.jl")
 include("vandermonde_tests.jl")
 include("basis_tests.jl")
 include("bernstein_tests.jl")

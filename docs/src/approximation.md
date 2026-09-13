@@ -79,7 +79,8 @@ A **modal** basis has no nodes. Its coefficients are the coefficients of an expa
 amplitudes of modes — and recovering them from function values requires solving a system or
 computing integrals. [`Legendre`](@ref) and [`Bernstein`](@ref) are modal.
 
-This is why [`nodes`](@ref), [`nnodes`](@ref) and `grid` are defined for the first group and
+The distinction is in the type hierarchy, as [`NodalBasis`](@ref) and [`ModalBasis`](@ref),
+which is why [`nodes`](@ref), [`nnodes`](@ref) and `grid` are defined for the first group and
 throw an informative error for the second:
 
 ```jldoctest
