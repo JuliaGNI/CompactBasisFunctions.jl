@@ -12,7 +12,7 @@ import QuadratureRules: gauss_legendre_nodes
     @test l' isa LagrangeDerivative
 
     @test grid(l) == x
-    @test basis(l) == l.b
+    @test all(basis(l)[j](0.3) == l[0.3, j] for j in eachindex(l))
     @test nodes(l) == x
     @test nbasis(l) == 2
     @test nnodes(l) == 2

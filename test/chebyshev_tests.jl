@@ -27,7 +27,7 @@ import OffsetArrays: OffsetArray
     @test u' isa ChebyshevDerivative
 
     @test grid(t) == t.x
-    @test basis(t) == t.b
+    @test all(basis(t)[j](0.3) == t[0.3, j] for j in eachindex(t))
     @test nodes(t) == t.x
     @test nbasis(t) == 2
     @test nnodes(t) == 2
@@ -36,7 +36,7 @@ import OffsetArrays: OffsetArray
     @test degree(t) == 1
 
     @test grid(u) == u.x
-    @test basis(u) == u.b
+    @test all(basis(u)[j](0.3) == u[0.3, j] for j in eachindex(u))
     @test nodes(u) == u.x
     @test nbasis(u) == 2
     @test nnodes(u) == 2

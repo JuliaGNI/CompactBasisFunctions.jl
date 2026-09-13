@@ -77,21 +77,19 @@ and is obtained as `Derivative(axes(b,1)) * b`; see [Derivatives](@ref).
 See also [`Legendre`](@ref) for the other modal basis, and [Bernstein basis](@ref) for the
 full discussion.
 """
-struct Bernstein{T, BT} <: ModalBasis{T}
-    b::BT
-
-    function Bernstein{T}(n::Integer) where {T}
-        p = n-1
-        # evaluated in the wider of T and the argument type, cf. `_evaltype`
-        b = OffsetArray([y -> _bernstein(i, p, _evaltype(T, typeof(y))(y)) for i in 0:p], 0:p)
-        new{T, typeof(b)}(b)
-    end
+struct Bernstein{T} <: ModalBasis{T}
+    n::Int
 end
 
 Bernstein(::Type{T}, n::Integer) where {T} = Bernstein{T}(n)
 Bernstein(n::Integer) = Bernstein(Float64, n)
 
-_key(B::Bernstein) = (Bernstein, nbasis(B))
+_key(B::Bernstein) = (Bernstein, B.n)
+
+function _eval(B::Bernstein, x, j::Integer)
+    local T = _evaltype(eltype(B), typeof(x))
+    _bernstein(j, degree(B), T(x))
+end
 
 ## Derivative
 
@@ -105,6 +103,7 @@ const BernsteinDerivative = QMul2{<:Derivative, <:Bernstein}
 
 function _eval(D::BernsteinDerivative, x, j::Integer)
     local p = degree(D.B)
-    local x̃ = _evaltype(eltype(D.B), typeof(x))(x)
+    local T = _evaltype(eltype(D.B), typeof(x))
+    local x̃ = T(x)
     p * (_bernstein(j-1, p-1, x̃) - _bernstein(j, p-1, x̃))
 end

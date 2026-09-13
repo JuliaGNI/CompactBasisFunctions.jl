@@ -74,22 +74,13 @@ Otherwise the constructor throws an `InexactError`.
 See also [Chebyshev basis](@ref) for the full discussion, and [`Lagrange`](@ref) for the
 other nodal basis.
 """
-struct Chebyshev{kind, T, BT} <: NodalBasis{T}
-    b::BT
+struct Chebyshev{kind, T} <: NodalBasis{T}
     x::Vector{T}
 
     function Chebyshev{kind, T}(n::Integer) where {kind, T}
-        p = n-1
         # chebyshev_nodes returns the points on [0,1]; shift_nodes widens integer
         # element types, so convert back to keep the nodes in T
-        x = convert(Vector{T}, chebyshev_nodes(T, n, Val(kind)))
-        # evaluated in the wider of T and the argument type, as the derivatives below are.
-        # The conversion precedes the shift onto [-1,1]: 2y-1 rounds in the argument's type,
-        # and widening the rounded result would freeze that error in.
-        b = OffsetArray(
-            [y -> _chebyshev(Val(kind), i, 2 * _evaltype(T, typeof(y))(y) - 1)
-             for i in 0:p], 0:p)
-        new{kind, T, typeof(b)}(b, x)
+        new{kind, T}(convert(Vector{T}, chebyshev_nodes(T, n, Val(kind))))
     end
 
     Chebyshev{kind}(::Type{T}, n::Integer) where {kind, T} = Chebyshev{kind, T}(n)
@@ -108,6 +99,13 @@ The kind of a Chebyshev basis, as the `Val` that the evaluators dispatch on.
 _kind(::Chebyshev{kind}) where {kind} = Val(kind)
 
 _key(C::Chebyshev{kind}) where {kind} = (Chebyshev{kind}, C.x)
+
+function _eval(C::Chebyshev, x, j::Integer)
+    # converted before the shift onto [-1,1], so that 2x-1 is not rounded in the argument's
+    # type and the rounding then widened along with it, cf. `_evaltype`
+    local T = _evaltype(eltype(C), typeof(x))
+    _chebyshev(_kind(C), j, 2 * T(x) - 1)
+end
 
 ## Derivative
 
@@ -177,8 +175,7 @@ finite.
 end
 
 function _eval(D::ChebyshevDerivative, x, j::Integer)
-    # converted before the shift onto [-1,1], so that 2x-1 is not rounded in the argument's
-    # type and the rounding then widened along with it, cf. `_evaltype`
-    local x̃ = 2 * _evaltype(eltype(D.B), typeof(x))(x) - 1
-    _chebyshev_derivative(_kind(D.B), j, x̃) * 2
+    # the 2 is the chain rule of the shift onto [0,1]
+    local T = _evaltype(eltype(D.B), typeof(x))
+    _chebyshev_derivative(_kind(D.B), j, 2 * T(x) - 1) * 2
 end

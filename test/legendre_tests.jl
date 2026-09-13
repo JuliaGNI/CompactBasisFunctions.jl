@@ -10,7 +10,7 @@ import QuadratureRules: GaussLegendreQuadrature, weights
     @test d*l isa LegendreDerivative
     @test l' isa LegendreDerivative
 
-    @test basis(l) == l.b
+    @test all(basis(l)[j](0.3) == l[0.3, j] for j in eachindex(l))
     @test nbasis(l) == 2
     @test eachindex(l) == 0:1
     @test order(l) == 2

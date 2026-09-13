@@ -9,10 +9,12 @@ not covered here; see the git history for those.
 
 ## [Unreleased] — targeting 0.4.0
 
-**This release is breaking.** Three internal type shapes change: `Bernstein` and `Legendre` drop
-their redundant `n` field, `Chebyshev` drops its fourth type parameter `XT`, and a
-`ContinuumArrays.Basis` subtype defined elsewhere that omits an accessor now gets the standard
-`MethodError` rather than this package's `ErrorException`. No numerical result changes.
+**This release is breaking.** The internal shape of every basis changes: none of them stores its
+basis functions any more, so each loses the type parameter that described that store, and
+`Chebyshev` loses a second one besides. A `ContinuumArrays.Basis` subtype defined elsewhere that
+omits an accessor now gets the standard `MethodError` rather than this package's `ErrorException`.
+One numerical result changes, and it is a fix: a `Legendre` basis evaluated at an argument wider
+than its own element type was accurate only to that element type.
 
 ### Added
 
@@ -24,9 +26,22 @@ their redundant `n` field, `Chebyshev` drops its fourth type parameter `XT`, and
   derivative, `eachindex`, `axes`, `adjoint`, the `@simplify` derivative product, and
   `hash`/`==`/`isequal`/`isapprox` are each now defined once on the appropriate supertype instead
   of once per family. Each family's own file keeps only what is peculiar to it: the recurrence,
-  the constructor, the derivative formula. `src/` is 104 lines shorter with the documentation of
-  the three new types included, and no numerical result changes — the kernels, the order of the
-  arithmetic and the argument-type promotion are all untouched.
+  the constructor, the derivative formula.
+
+  A basis supplies **one** internal method, evaluating one basis function at one point, and the
+  data that method needs — `n` for a modal basis, the nodes for a nodal one. It no longer stores
+  its basis functions: they were an array of closures, built for every basis whether or not
+  anything asked for them, and the only mechanism by which a basis could be evaluated. A basis
+  and its derivative now evaluate through the same one, and the bounds check on the index is
+  likewise shared rather than written out four times.
+
+  What a caller notices is the cost of building one. `Bernstein(10)` and `Legendre(10)` allocate
+  **nothing at all**, against 224 and 144 bytes, and `Lagrange` on ten nodes allocates 1808 bytes
+  against 3520. Evaluation is unchanged, to the resolution of the measurement: 989 evaluations of
+  a Lagrange derivative at 20 nodes take 166.0 µs against 166.2 µs before.
+
+  `src/` holds 276 lines of code where it held 394, and 567 lines of documentation where it held
+  523.
 
 - **Aqua.jl joins the test suite** (`test/aqua_tests.jl`, `Aqua = "0.8"` in `[compat]`), checking
   piracy, method ambiguities, stale and duplicated dependencies, undefined exports, unbound type
@@ -48,6 +63,25 @@ their redundant `n` field, `Chebyshev` drops its fourth type parameter `XT`, and
   allocation assertions are skipped where a run forces `--check-bounds=yes`, under which the
   counts mean nothing.
 
+### Fixed
+
+- **A `Legendre` basis evaluated at a wider argument was accurate only to its own element type.**
+  The normalisation factor `√(2j+1)` was formed in the basis's `T` and the recurrence in the
+  promoted type, so a `Float64` basis asked about a 256-bit `BigFloat` point returned a
+  `BigFloat` wrong in the 17th digit:
+
+  ```julia
+  setprecision(BigFloat, 256) do
+      Legendre(6)[BigFloat(3)/10, 5] == Legendre(BigFloat, 6)[BigFloat(3)/10, 5]
+  end                                     # false before, true now
+  ```
+
+  Its derivative formed the same factor in the promoted type and was already exact, so a basis
+  and its own derivative disagreed about how much precision they carried. This is the remainder
+  of the promotion fixed in 0.3.1, which moved the recurrences and left the constant factor
+  behind. Values at matching precision are unchanged, and the three other families were already
+  exact — the suite now asserts it for all four.
+
 ### Changed
 
 - **The generic accessors are no longer type piracy.** The old fallbacks `basis`, `nodes`,
@@ -68,10 +102,16 @@ their redundant `n` field, `Chebyshev` drops its fourth type parameter `XT`, and
 - **A basis size and a basis index may be any `Integer`, not only an `Int`.** `ChebyshevT(Int32(3))`
   used to raise a `MethodError`.
 
+- **`basis(b)` builds its callables on each call**, rather than handing out a stored array. It
+  is documented as the rare path — `basis(b)[j](x) == b[x,j]` now holds by construction rather
+  than by keeping two mechanisms in step — and indexing `b` directly is unaffected.
+
 - **Housekeeping.** The two Chebyshev evaluation kernels collapse into one, the kinds differing
   only in the seed, `T₁ = x` against `U₁ = 2x`; `vandermonde_matrix_inverse` loses the
   special-cased first row and first column that its general formulas already produce — its results
-  are bit-identical to the previous implementation, checked for `n = 1` to `8`.
+  are bit-identical to the previous implementation, checked for `n = 1` to `8`. `Lagrange` keeps
+  its cached matrix of node differences: removing it costs ~20 % on the derivative at 20 nodes
+  and more above, which the comment there now records.
 
 - **The bounds check on a derivative index is explicit in every family.** It lived in three of
   the four derivative evaluators; the fourth, `LagrangeDerivative`, let the index fall off the

@@ -72,27 +72,21 @@ The derivative follows from differentiating Bonnet's recurrence, with the chain-
 See also [`Bernstein`](@ref) for the other modal basis, and [Legendre basis](@ref) for the
 full discussion.
 """
-struct Legendre{T, LT} <: ModalBasis{T}
-    b::LT
-
-    function Legendre{T}(n::Integer) where {T}
-        p = n-1
-        # the recurrence runs in the wider of T and the argument type, so that a basis of
-        # extended precision carries it into the value and not just into the factor below.
-        # The conversion has to come before the shift onto [-1,1], not after: 2y-1 rounds in
-        # the argument's type, and widening the rounded result freezes that error in.
-        b = OffsetArray(
-            [y -> _legendre(i, 2 * _evaltype(T, typeof(y))(y) - 1) * sqrt(T(2i+1))
-             for i in 0:p],
-            0:p)
-        new{T, typeof(b)}(b)
-    end
+struct Legendre{T} <: ModalBasis{T}
+    n::Int
 end
 
 Legendre(::Type{T}, n::Integer) where {T} = Legendre{T}(n)
 Legendre(n::Integer) = Legendre(Float64, n)
 
-_key(L::Legendre) = (Legendre, nbasis(L))
+_key(L::Legendre) = (Legendre, L.n)
+
+function _eval(L::Legendre, x, j::Integer)
+    local T = _evaltype(eltype(L), typeof(x))
+    # the conversion precedes the shift onto [-1,1], and the normalisation factor is formed
+    # in the same arithmetic as the recurrence, cf. `_evaltype`
+    _legendre(j, 2 * T(x) - 1) * sqrt(T(2j+1))
+end
 
 ## Derivative
 
@@ -137,8 +131,6 @@ const LegendreDerivative = QMul2{<:Derivative, <:Legendre}
 function _eval(D::LegendreDerivative, x, j::Integer)
     local T = _evaltype(eltype(D.B), typeof(x))
     # the sqrt(2j+1) is part of the basis function, so it belongs to its derivative too;
-    # the 2 is the chain rule of the shift onto [0,1]. The argument is converted before the
-    # shift, so that 2x-1 is not rounded in the argument's type, cf. `_evaltype`
-    local x̃ = T(x)
-    _legendre_derivative(j, 2x̃-1) * 2 * sqrt(T(2j+1))
+    # the 2 is the chain rule of the shift onto [0,1]
+    _legendre_derivative(j, 2 * T(x) - 1) * 2 * sqrt(T(2j+1))
 end

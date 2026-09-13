@@ -51,36 +51,36 @@ true
 See also [`Chebyshev`](@ref) for the other nodal basis, and [Lagrange basis](@ref) for the
 full discussion.
 """
-struct Lagrange{T, BT, XT <: AbstractVector{T}} <: NodalBasis{T}
-    b::BT
+struct Lagrange{T, XT <: AbstractVector{T}} <: NodalBasis{T}
     x::XT
 
+    # the reciprocal of ∏_{i≠j} (xⱼ - xᵢ), which a cardinal function needs whole
     denom::XT
+
+    # the node differences xᵢ - xⱼ, which its derivative needs one at a time. Caching them
+    # costs n² of storage once and is worth it: recomputing the difference inside the
+    # derivative's own O(n²) loop measures ~20 % slower at n = 20 and worse above.
     diffs::Matrix{T}
 
     function Lagrange{T}(x::XT) where {T, XT <: SVector}
         n = length(x)
 
         # a non-finite node poisons every difference it enters, so the distinctness test
-        # below cannot see it; it is caught before the differences are formed — and before
-        # their product, so that the message names the fault that is actually present. A
-        # degenerate product does not by itself say which: it is equally what an
-        # unrepresentable product of perfectly good nodes gives, and reporting that one as a
-        # repeated node sends the reader after the wrong thing.
+        # below cannot see it; it is caught first, and before the product, so that the
+        # message names the fault that is actually present. A degenerate product does not by
+        # itself say which: it is equally what an unrepresentable product of perfectly good
+        # nodes gives, and reporting that one as a repeated node sends the reader after the
+        # wrong thing.
         all(isfinite, x) || throw(ArgumentError(
             "the nodes of a Lagrange basis must be finite, got $(x)"))
 
         denom = zeros(T, n)
-        diffs = zeros(T, n, n)
+        diffs = [x[i] - x[j] for i in 1:n, j in 1:n]
 
         for i in 1:n
-            for j in 1:n
-                diffs[i, j] = x[i] - x[j]
-            end
-
-            # the product of the node differences is what has to be invertible, so it is
-            # tested rather than the node list: `allunique` compares with `isequal`, which
-            # holds 0.0 and -0.0 to be distinct although their difference is zero.
+            # the differences are what has to be invertible, so they are tested rather than
+            # the node list: `allunique` compares with `isequal`, which holds 0.0 and -0.0 to
+            # be distinct although their difference is zero.
             any(j -> j ≠ i && iszero(diffs[i, j]), 1:n) && throw(ArgumentError(
                 "the nodes of a Lagrange basis must be distinct, got $(x)"))
 
@@ -94,13 +94,7 @@ struct Lagrange{T, BT, XT <: AbstractVector{T}} <: NodalBasis{T}
             denom[i] = 1/p
         end
 
-        sdenom = SVector{n}(denom)
-
-        b = collect(y -> sdenom[j] *
-                         mapreduce(i -> i ≠ j ? (y - x[i]) : one(T), *, eachindex(x))
-        for j in eachindex(sdenom))
-
-        new{T, typeof(b), typeof(x)}(b, x, sdenom, diffs)
+        new{T, XT}(x, SVector{n}(denom), diffs)
     end
 
     Lagrange{T}(x::AbstractVector) where {T} = Lagrange{T}(SVector{length(x), T}(collect(x)))
@@ -142,14 +136,21 @@ LagrangeLobatto(n) = Lagrange(lobatto_legendre_nodes(n))
 
 _key(L::Lagrange) = (Lagrange, L.x)
 
+# the cardinal functions are numbered with the nodes they belong to, from 1, where the other
+# three families number theirs from 0
+Base.eachindex(L::Lagrange) = eachindex(nodes(L))
+
+function _eval(L::Lagrange{T}, x, j::Integer) where {T}
+    L.denom[j] * mapreduce(i -> i ≠ j ? (x - L.x[i]) : one(T), *, eachindex(L))
+end
+
 ## Derivative
 
 """
     LagrangeDerivative
 
 The type of `Derivative(axes(l,1)) * l` for a [`Lagrange`](@ref) basis `l`, equivalently of
-`l'`, evaluated from the node differences the basis caches. See
-[`PolynomialBasisDerivative`](@ref) and [Derivatives](@ref).
+`l'`. See [`PolynomialBasisDerivative`](@ref) and [Derivatives](@ref).
 """
 const LagrangeDerivative = QMul2{<:Derivative, <:Lagrange}
 

@@ -218,6 +218,31 @@ end
         end
     end
 
+    # A wider argument must carry into everything the evaluation forms, the constant factors
+    # included, so that a basis whose definition does not depend on stored data gives the
+    # same value whatever element type it was built with. `Legendre` formed its sqrt(2j+1)
+    # in its own element type, so a Float64 basis at a 256-bit point was a BigFloat accurate
+    # to 1.2e-17 — while its derivative, which formed the factor in the promoted type, was
+    # exact. `Lagrange` is not in this list: its nodes are its definition, so a Float64 and
+    # a BigFloat Lagrange basis are different bases rather than the same one at two
+    # precisions.
+    setprecision(BigFloat, 256) do
+        x = BigFloat(3) / 10
+
+        for (narrow, wide) in ((Bernstein(6), Bernstein(BigFloat, 6)),
+            (Legendre(6), Legendre(BigFloat, 6)),
+            (ChebyshevT(6), ChebyshevT(BigFloat, 6)),
+            (ChebyshevU(6), ChebyshevU(BigFloat, 6)))
+            dn = Derivative(axes(narrow, 1))
+            dw = Derivative(axes(wide, 1))
+
+            for j in eachindex(narrow)
+                @test narrow[x, j] == wide[x, j]
+                @test (dn * narrow)[x, j] == (dw * wide)[x, j]
+            end
+        end
+    end
+
     # ... and the promotion only ever widens: an argument more precise than the basis keeps
     # its own precision, as it did before
     setprecision(BigFloat, 256) do

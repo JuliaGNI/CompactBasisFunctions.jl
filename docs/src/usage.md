@@ -188,14 +188,15 @@ true
 ## Element types and precision
 
 The element type propagates through every internal quantity, so an arbitrary-precision basis
-really carries its precision:
+really carries its precision. A partition of unity is the sharp test of it, since it holds
+exactly and the deviation from it measures the accumulated rounding of an evaluation:
 
 ```jldoctest
 julia> setprecision(BigFloat, 256) do
            b = Lagrange(gauss_legendre_nodes(BigFloat, 4))
-           eltype(b.denom), eltype(b.diffs)
+           eltype(b), abs(sum(b[BigFloat(1)/3, j] for j in eachindex(b)) - 1) < 1e-70
        end
-(BigFloat, BigFloat)
+(BigFloat, true)
 ```
 
 Evaluation is carried out in the wider of the basis's element type and the type of the point,
