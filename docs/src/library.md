@@ -10,11 +10,22 @@ and [Polynomial Approximation](@ref) for the underlying theory.
 ```@index
 ```
 
+## Type hierarchy
+
+Every basis is a subtype of `PolynomialBasis`, and through it of ContinuumArrays' `Basis`.
+The two intermediate types are the nodal/modal split of [Polynomial Approximation](@ref),
+and are what decides whether the node accessors answer or throw.
+
+```@docs
+PolynomialBasis
+NodalBasis
+ModalBasis
+```
+
 ## Generic API
 
-Every basis is a subtype of ContinuumArrays' `Basis`, and answers the accessors below. The
-methods shown here are the fallbacks on the abstract type, which report that a concrete basis
-has not implemented them; the per-family pages document what each one returns.
+The accessors below are defined once, on the supertypes above, and the per-family pages
+document what each one returns.
 
 `basis`, `degree`, `nodes`, `nnodes` and `order` are imported from `GeometricBase`, and `grid`
 from `ContinuumArrays`, so that the packages of the ecosystem extend one generic function per
@@ -65,6 +76,7 @@ Applying `Derivative(axes(b,1))` to a basis produces a lazy product, one type pe
 evaluates the derivative on indexing. See [Derivatives](@ref) for how they are used.
 
 ```@docs
+PolynomialBasisDerivative
 BernsteinDerivative
 ChebyshevDerivative
 ChebyshevTDerivative

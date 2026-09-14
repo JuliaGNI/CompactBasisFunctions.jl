@@ -7,6 +7,138 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Releases 
 not covered here; see the git history for those.
 
 
+## [Unreleased] — targeting 0.4.0
+
+**This release is breaking.** The internal shape of every basis changes: none of them stores its
+basis functions any more, so each loses the type parameter that described that store, and
+`Chebyshev` loses a second one besides. A `ContinuumArrays.Basis` subtype defined elsewhere that
+omits an accessor now gets the standard `MethodError` rather than this package's `ErrorException`.
+One numerical result changes, and it is a fix: a `Legendre` basis evaluated at an argument wider
+than its own element type was accurate only to that element type.
+
+### Added
+
+- **A type hierarchy replaces four families of identical code.** `PolynomialBasis{T} <: Basis{T}`
+  is the common base; it splits into `NodalBasis{T}` (Chebyshev, Lagrange) and `ModalBasis{T}`
+  (Bernstein, Legendre). All four are exported and documented, as is `PolynomialBasisDerivative`,
+  the supertype of the four per-family derivative types. The accessors (`basis`, `nbasis`,
+  `order`, `degree`, `nodes`, `nnodes`, `grid`), the four indexing forms of a basis and of a
+  derivative, `eachindex`, `axes`, `adjoint`, the `@simplify` derivative product, and
+  `hash`/`==`/`isequal`/`isapprox` are each now defined once on the appropriate supertype instead
+  of once per family. Each family's own file keeps only what is peculiar to it: the recurrence,
+  the constructor, the derivative formula.
+
+  A basis supplies **one** internal method, evaluating one basis function at one point, and the
+  data that method needs — `n` for a modal basis, the nodes for a nodal one. It no longer stores
+  its basis functions: they were an array of closures, built for every basis whether or not
+  anything asked for them, and the only mechanism by which a basis could be evaluated. A basis
+  and its derivative now evaluate through the same one, and the bounds check on the index is
+  likewise shared rather than written out four times.
+
+  What a caller notices is the cost of building one. `Bernstein(10)` and `Legendre(10)` allocate
+  **nothing at all**, against 224 and 144 bytes, and `Lagrange` on ten nodes allocates 1808 bytes
+  against 3520. Evaluation is unchanged, to the resolution of the measurement: 989 evaluations of
+  a Lagrange derivative at 20 nodes take 166.0 µs against 166.2 µs before.
+
+  `src/` holds 276 lines of code where it held 394, and 567 lines of documentation where it held
+  523.
+
+- **Aqua.jl joins the test suite** (`test/aqua_tests.jl`, `Aqua = "0.8"` in `[compat]`), checking
+  piracy, method ambiguities, stale and duplicated dependencies, undefined exports, unbound type
+  parameters and Project.toml validity. All pass.
+
+- **Test coverage expanded:** the type hierarchy and the shared indexing; the expansion `b * c`,
+  which the README leads with and nothing covered; cross-family equality, hash and `isapprox`,
+  and what a tolerance means for each family; `BoundsError` at both ends for every basis and
+  every derivative type; the
+  documented `InexactError` for an integer `Chebyshev` element type and the `n ≥ 2` requirement
+  of the second kind; any `Integer` accepted as a basis size; and for the Vandermonde matrices
+  their documented meaning (`V*c` are values, `V⁻¹*y` and `V\y` are monomial coefficients),
+  element-type propagation through `Float32`, `Rational` and `BigFloat`, and the one-node case.
+
+- **Evaluation is asserted to be type stable and allocation-free.** `@inferred` on `b[x,j]` and
+  `(d*b)[x,j]`, and a zero-allocation assertion covering those two, `Derivative(axes(b,1)) * b`,
+  the counting accessors and the four comparisons, for every basis. The stability assertions now
+  also test with a widened argument, `wide = BigFloat(3)/10` under `setprecision(BigFloat, 256)`,
+  ensuring type stability across element-type promotion. Nothing on the scalar surface allocates;
+  the array-returning indexing forms allocate their result and are not covered. The allocation
+  assertions are skipped where a run forces `--check-bounds=yes`, under which the counts mean
+  nothing.
+
+### Fixed
+
+- **A `Legendre` basis evaluated at a wider argument was accurate only to its own element type.**
+  The normalisation factor `√(2j+1)` was formed in the basis's `T` and the recurrence in the
+  promoted type, so a `Float64` basis asked about a 256-bit `BigFloat` point returned a
+  `BigFloat` wrong in the 17th digit:
+
+  ```julia
+  setprecision(BigFloat, 256) do
+      Legendre(6)[BigFloat(3)/10, 5] == Legendre(BigFloat, 6)[BigFloat(3)/10, 5]
+  end                                     # false before, true now
+  ```
+
+  Its derivative formed the same factor in the promoted type and was already exact, so a basis
+  and its own derivative disagreed about how much precision they carried. This is the remainder
+  of the promotion fixed in 0.3.1, which moved the recurrences and left the constant factor
+  behind. Values at matching precision are unchanged, and the three other families were already
+  exact — the suite now asserts it for all four.
+
+- **A `Lagrange` basis evaluated at a wider argument was type-unstable.** The cardinal function is
+  built as the product of factors `(x - L.x[i])` over all nodes except `j`, with the skipped
+  position taking the neutral element `one(T)` in the basis's element type `T`. Every other factor
+  promoted to the wider of the basis's type and the argument's, so inference saw a union:
+
+  ```julia
+  Base.return_types(getindex, (typeof(LagrangeGauß(4)), BigFloat, Int))
+  # before:  Union{Float64, BigFloat}
+  # after:   BigFloat
+  ```
+
+  The fix forms that neutral element in the promoted type, matching the other four families'
+  approach. This is a pre-existing defect, not introduced by this branch — `main` infers the same
+  union. It is fixed here because this branch made the evaluation code shared. A one-node basis now
+  returns its result in the promoted type; for bases with two or more nodes, numeric values are
+  unchanged. This is the same class of promotion fix as the `Legendre` entry above.
+
+### Changed
+
+- **The generic accessors are no longer type piracy.** The old fallbacks `basis`, `nodes`,
+  `nnodes`, `order`, `degree` were methods on ContinuumArrays' `Basis` for generics owned by
+  GeometricBase. They are now real implementations on `PolynomialBasis`, `NodalBasis` and
+  `ModalBasis`. Consequence for a caller: a `ContinuumArrays.Basis` subtype defined elsewhere
+  that does not implement an accessor now gets the ordinary `MethodError` rather than this
+  package's informative `ErrorException`. The modal bases' own error message — naming the basis
+  and explaining that it is modal and has no nodes — is unchanged.
+
+- **Equality is defined once.** A basis is identified by its family together with the data that
+  family is built from. Cross-family comparison now goes through the same path, so
+  `Lagrange(nodes(ChebyshevU(3))) != ChebyshevU(3)` is asserted rather than falling out of the
+  absence of a method. Semantics per family are unchanged, including that `isapprox` applies a
+  tolerance to the nodes of a nodal basis and none to the function count of a modal one:
+  `Bernstein(3) ≈ Bernstein(5)` is false at any `atol`.
+
+- **A basis size and a basis index may be any `Integer`, not only an `Int`.** `ChebyshevT(Int32(3))`
+  used to raise a `MethodError`.
+
+- **`basis(b)` builds its callables on each call**, rather than handing out a stored array. It
+  is documented as the rare path — `basis(b)[j](x) == b[x,j]` now holds by construction rather
+  than by keeping two mechanisms in step — and indexing `b` directly is unaffected.
+
+- **Housekeeping.** The two Chebyshev evaluation kernels collapse into one, the kinds differing
+  only in the seed, `T₁ = x` against `U₁ = 2x`; `vandermonde_matrix_inverse` loses the
+  special-cased first row and first column that its general formulas already produce — its results
+  are bit-identical to the previous implementation, checked for `n = 1` to `8`. `Lagrange` keeps
+  its cached matrix of node differences: removing it costs ~20 % on the derivative at 20 nodes
+  and more above, which the comment there now records.
+
+- **The bounds check on a derivative index is explicit in every family.** It lived in three of
+  the four derivative evaluators; the fourth, `LagrangeDerivative`, let the index fall off the
+  matrix of node differences it caches, so the `BoundsError` named that matrix instead of the
+  basis. The check now sits in the shared `getindex`, which covers the vector form
+  `(d*b)[X, j]` as well.
+
+
 ## [0.3.1]
 
 ### Fixed

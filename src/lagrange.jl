@@ -1,6 +1,4 @@
 
-import QuadratureRules: gauss_legendre_nodes, lobatto_legendre_nodes
-
 @doc raw"""
     Lagrange(x)
     Lagrange{T}(x)
@@ -53,43 +51,41 @@ true
 See also [`Chebyshev`](@ref) for the other nodal basis, and [Lagrange basis](@ref) for the
 full discussion.
 """
-struct Lagrange{T, BT, XT <: AbstractVector{T}} <: Basis{T}
-    b::BT
+struct Lagrange{T, XT <: AbstractVector{T}} <: NodalBasis{T}
     x::XT
 
+    # the reciprocal of ∏_{i≠j} (xⱼ - xᵢ), which a cardinal function needs whole
     denom::XT
+
+    # the node differences xᵢ - xⱼ, which its derivative needs one at a time. Caching them
+    # costs n² of storage once and is worth it: recomputing the difference inside the
+    # derivative's own O(n²) loop measures ~20 % slower at n = 20 and worse above.
     diffs::Matrix{T}
 
     function Lagrange{T}(x::XT) where {T, XT <: SVector}
         n = length(x)
 
+        # a non-finite node poisons every difference it enters, so the distinctness test
+        # below cannot see it; it is caught first, and before the product, so that the
+        # message names the fault that is actually present. A degenerate product does not by
+        # itself say which: it is equally what an unrepresentable product of perfectly good
+        # nodes gives, and reporting that one as a repeated node sends the reader after the
+        # wrong thing.
+        all(isfinite, x) || throw(ArgumentError(
+            "the nodes of a Lagrange basis must be finite, got $(x)"))
+
         denom = zeros(T, n)
-        diffs = zeros(T, n, n)
+        diffs = [x[i] - x[j] for i in 1:n, j in 1:n]
 
-        for i in eachindex(x)
-            local p = one(T)
-            for j in eachindex(x)
-                diffs[i, j] = x[i] - x[j]
-                if i ≠ j
-                    p *= diffs[i, j]
-                end
-            end
-
-            # the product of the node differences is what has to be invertible, so it is
-            # tested rather than the node list: `allunique` compares with `isequal`, which
-            # holds 0.0 and -0.0 to be distinct although their difference is zero, and lets
-            # a lone NaN through to poison every difference silently.
-            #
-            # The three ways it can fail are told apart so that the message names the fault
-            # that is actually present. A degenerate product does not by itself say which:
-            # it is equally what an unrepresentable product of perfectly good nodes gives,
-            # and reporting that one as a repeated node sends the reader after the wrong
-            # thing. So the nodes are asked about first, and the product only carries what
-            # is left over.
-            any(j -> j ≠ i && iszero(diffs[i, j]), eachindex(x)) && throw(ArgumentError(
+        for i in 1:n
+            # the differences are what has to be invertible, so they are tested rather than
+            # the node list: `allunique` compares with `isequal`, which holds 0.0 and -0.0 to
+            # be distinct although their difference is zero.
+            any(j -> j ≠ i && iszero(diffs[i, j]), 1:n) && throw(ArgumentError(
                 "the nodes of a Lagrange basis must be distinct, got $(x)"))
-            all(isfinite, x) || throw(ArgumentError(
-                "the nodes of a Lagrange basis must be finite, got $(x)"))
+
+            local p = prod(diffs[i, j] for j in 1:n if j ≠ i; init = one(T))
+
             (iszero(p) || !isfinite(p)) && throw(ArgumentError(
                 "the nodes of a Lagrange basis are distinct and finite, but the product of " *
                 "the differences from node $(i) is $(p) in $(T), so the denominator it " *
@@ -98,17 +94,10 @@ struct Lagrange{T, BT, XT <: AbstractVector{T}} <: Basis{T}
             denom[i] = 1/p
         end
 
-        sdenom = SVector{n}(denom)
-
-        b = collect(y -> sdenom[j] *
-                         mapreduce(i -> i ≠ j ? (y - x[i]) : one(T), *, eachindex(x))
-        for j in eachindex(sdenom))
-
-        new{T, typeof(b), typeof(x)}(b, x, sdenom, diffs)
+        new{T, XT}(x, SVector{n}(denom), diffs)
     end
 
-    Lagrange{T}(x::Vector) where {T} = Lagrange{T}(SVector{length(x), T}(x))
-    Lagrange{T}(x::AbstractVector) where {T} = Lagrange{T}(collect(x))
+    Lagrange{T}(x::AbstractVector) where {T} = Lagrange{T}(SVector{length(x), T}(collect(x)))
 end
 
 Lagrange(x::AbstractVector{T}) where {T} = Lagrange{T}(x)
@@ -145,71 +134,59 @@ true
 """
 LagrangeLobatto(n) = Lagrange(lobatto_legendre_nodes(n))
 
-(L::Lagrange)(x::Number, j::Integer) = L.b[j](x)
+_key(L::Lagrange) = (Lagrange, L.x)
 
-basis(L::Lagrange) = L.b
-nodes(L::Lagrange) = L.x
-nbasis(L::Lagrange) = length(basis(L))
-nnodes(L::Lagrange) = length(nodes(L))
-order(L::Lagrange) = nnodes(L)
-degree(L::Lagrange) = nnodes(L) - 1
+# the cardinal functions are numbered with the nodes they belong to, from 1, where the other
+# three families number theirs from 0
+Base.eachindex(L::Lagrange) = eachindex(nodes(L))
 
-Base.eltype(::Lagrange{T}) where {T} = T
-Base.eachindex(L::Lagrange) = eachindex(L.b)
-Base.axes(L::Lagrange) = (Inclusion(0..1), eachindex(L))
-ContinuumArrays.grid(L::Lagrange) = nodes(L)
+function _eval(L::Lagrange, x, j::Integer)
+    # the product starts from a one in the arithmetic the factors reach by promotion, so a
+    # wider argument gives one type and not a union; the subtraction promotes on its own,
+    # so `x` needs no conversion, cf. `_evaltype`
+    local T = _evaltype(eltype(L), typeof(x))
+    local p::T = one(T)
 
-Base.hash(L::Lagrange, h::UInt) = hash(L.x, h)
-Base.:(==)(L1::Lagrange, L2::Lagrange) = (L1.x == L2.x)
-Base.isequal(L1::Lagrange{T1}, L2::Lagrange{T2}) where {T1, T2} = (T1 == T2 && L1 == L2)
-Base.isapprox(L1::Lagrange, L2::Lagrange; kwargs...) = isapprox(L1.x, L2.x; kwargs...)
+    # the cardinal function of node j is the product over every other node. The loop is
+    # written out rather than folded: a closure that captures `T` is inferrable as `Any`
+    # on the 1.10 floor, whatever the argument type
+    for i in eachindex(L)
+        if i ≠ j
+            p *= x - L.x[i]
+        end
+    end
 
-Base.getindex(L::Lagrange, x::Number, j::Integer) = L(x, j)
-Base.getindex(L::Lagrange, x::Number, ::Colon) = [b(x) for b in L.b]
-Base.getindex(L::Lagrange, X::AbstractVector, j::Integer) = L.(X, j)
-Base.getindex(L::Lagrange, X::AbstractVector, ::Colon) = [b(x) for x in X, b in L.b]
+    return L.denom[j] * p
+end
 
 ## Derivative
-
-@simplify *(D::Derivative, L::Lagrange) = Mul(D, L)
 
 """
     LagrangeDerivative
 
 The type of `Derivative(axes(l,1)) * l` for a [`Lagrange`](@ref) basis `l`, equivalently of
-`l'`.
-
-A lazy product: it stores the basis and evaluates the derivative on indexing, from the node
-differences the basis caches. See [Derivatives](@ref).
+`l'`. See [`PolynomialBasisDerivative`](@ref) and [Derivatives](@ref).
 """
 const LagrangeDerivative = QMul2{<:Derivative, <:Lagrange}
 
-function _eval(D::LagrangeDerivative, x::DT, j::Int) where {DT}
+function _eval(D::LagrangeDerivative, x, j::Integer)
     local L = D.B
-    local T = promote_type(eltype(L), DT)
+    local T = _evaltype(eltype(L), typeof(x))
     local d::T = 0
 
+    # the product rule applied to ∏_{i≠j} (x - xᵢ) / (xⱼ - xᵢ): one summand per factor
+    # differentiated, with the remaining factors left as they are
     for l in eachindex(L)
         if l ≠ j
             z = 1 / L.diffs[j, l]
             for i in eachindex(L)
-                i ≠ j && i ≠ l ? z *= (x - L.x[i]) / L.diffs[j, i] : nothing
+                if i ≠ j && i ≠ l
+                    z *= (x - L.x[i]) / L.diffs[j, i]
+                end
             end
             d += z
         end
     end
+
     return d
 end
-
-Base.getindex(D::LagrangeDerivative, x::Number, j::Integer) = _eval(D, x, j)
-function Base.getindex(D::LagrangeDerivative, x::Number, ::Colon)
-    [_eval(D, x, j) for j in eachindex(D.B)]
-end
-function Base.getindex(D::LagrangeDerivative, X::AbstractVector, j::Integer)
-    [_eval(D, x, j) for x in X]
-end
-function Base.getindex(D::LagrangeDerivative, X::AbstractVector, ::Colon)
-    [_eval(D, x, j) for x in X, j in eachindex(D.B)]
-end
-
-Base.adjoint(L::Lagrange) = Derivative(axes(L, 1)) * L

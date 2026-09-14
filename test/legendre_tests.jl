@@ -10,7 +10,7 @@ import QuadratureRules: GaussLegendreQuadrature, weights
     @test d*l isa LegendreDerivative
     @test l' isa LegendreDerivative
 
-    @test basis(l) == l.b
+    @test all(basis(l)[j](0.3) == l[0.3, j] for j in eachindex(l))
     @test nbasis(l) == 2
     @test eachindex(l) == 0:1
     @test order(l) == 2
@@ -118,7 +118,7 @@ import QuadratureRules: GaussLegendreQuadrature, weights
     @test (d * l)[1.0, 2] == +6sqrt(5)
 
     # the sqrt(2i+1) scaling makes the basis orthonormal on [0,1], i.e. the mass matrix
-    # is the identity. Nothing asserted this, although it is the point of the scaling.
+    # is the identity, which is the point of the scaling.
     quad = GaussLegendreQuadrature(24)
 
     for n in 1:8

@@ -1,6 +1,4 @@
 
-using OffsetArrays
-
 """
 Bernstein polynomial ``B_{j,p}(x) = \\binom{p}{j} x^j (1-x)^{p-j}`` on the interval [0..1].
 
@@ -19,10 +17,10 @@ numerically useful.
 Note that `/` promotes, so the accumulator leaves an integer `T`: the return type is
 floating point whenever `j ≥ 1`.
 
-Returns zero outside `0 ≤ j ≤ p`, which is what makes the `p = n-2` calls from the
-derivative work for `n = 1`.
+Returns zero outside `0 ≤ j ≤ p`, which is what makes the calls from the derivative, one
+degree lower, work for a basis of a single function.
 """
-@inline function _bernstein(j::Int, p::Int, x::T) where {T}
+@inline function _bernstein(j::Integer, p::Integer, x::T) where {T}
     (j < 0 || j > p) && return zero(T)
 
     local c = one(T)
@@ -79,76 +77,33 @@ and is obtained as `Derivative(axes(b,1)) * b`; see [Derivatives](@ref).
 See also [`Legendre`](@ref) for the other modal basis, and [Bernstein basis](@ref) for the
 full discussion.
 """
-struct Bernstein{T, BT} <: Basis{T}
-    b::BT
+struct Bernstein{T} <: ModalBasis{T}
     n::Int
-
-    function Bernstein{T}(n::Integer) where {T}
-        p = n-1
-        # evaluated in the wider of T and the argument type, cf. `_evaltype`
-        b = OffsetArray([y -> _bernstein(i, p, _evaltype(T, typeof(y))(y)) for i in 0:p], 0:p)
-        new{T, typeof(b)}(b, n)
-    end
 end
 
 Bernstein(::Type{T}, n::Integer) where {T} = Bernstein{T}(n)
 Bernstein(n::Integer) = Bernstein(Float64, n)
 
-(B::Bernstein)(x::Number, j::Integer) = B.b[j](x)
+_key(B::Bernstein) = (Bernstein, B.n)
 
-basis(B::Bernstein) = B.b
-nbasis(B::Bernstein) = B.n
-order(B::Bernstein) = nbasis(B)
-degree(B::Bernstein) = nbasis(B) - 1
-
-nodes(B::Bernstein) = _no_nodes(B, "nodes")
-nnodes(B::Bernstein) = _no_nodes(B, "nnodes")
-ContinuumArrays.grid(B::Bernstein) = _no_nodes(B, "grid")
-
-Base.eltype(::Bernstein{T}) where {T} = T
-Base.eachindex(B::Bernstein) = eachindex(B.b)
-Base.axes(B::Bernstein) = (Inclusion(0..1), eachindex(B))
-
-Base.hash(B::Bernstein, h::UInt) = hash(B.n, h)
-Base.:(==)(B1::Bernstein, B2::Bernstein) = (B1.n == B2.n)
-Base.isequal(B1::Bernstein{T1}, B2::Bernstein{T2}) where {T1, T2} = (T1 == T2 && B1 == B2)
-Base.isapprox(B1::Bernstein, B2::Bernstein; kwargs...) = (B1.n == B2.n)
-
-Base.getindex(B::Bernstein, x::Number, j::Integer) = B(x, j)
-Base.getindex(B::Bernstein, x::Number, ::Colon) = [b(x) for b in B.b]
-Base.getindex(B::Bernstein, X::AbstractVector, j::Integer) = B.(X, j)
-Base.getindex(B::Bernstein, X::AbstractVector, ::Colon) = [b(x) for x in X, b in B.b]
-
-## Derivative
-
-function _eval_derivative(b::Bernstein{T}, x::DT, i::Int) where {T, DT}
-    @boundscheck i ≥ 0 && i < b.n || throw(BoundsError(b, i))
-    local x̃ = _evaltype(T, DT)(x)
-    (b.n-1) * (_bernstein(i-1, b.n-2, x̃) - _bernstein(i, b.n-2, x̃))
+function _eval(B::Bernstein, x, j::Integer)
+    local T = _evaltype(eltype(B), typeof(x))
+    _bernstein(j, degree(B), T(x))
 end
 
-@simplify *(D::Derivative, B::Bernstein) = Mul(D, B)
+## Derivative
 
 """
     BernsteinDerivative
 
 The type of `Derivative(axes(b,1)) * b` for a [`Bernstein`](@ref) basis `b`, equivalently of
-`b'`.
-
-A lazy product: it stores the basis and evaluates the derivative on indexing, so
-`(d*b)[x,j]` is ``B_{j,p}'(x)``. See [Derivatives](@ref).
+`b'`. See [`PolynomialBasisDerivative`](@ref) and [Derivatives](@ref).
 """
 const BernsteinDerivative = QMul2{<:Derivative, <:Bernstein}
 
-Base.getindex(D::BernsteinDerivative, x::Number, j::Integer) = _eval_derivative(D.B, x, j)
-function Base.getindex(D::BernsteinDerivative, x::Number, ::Colon)
-    [_eval_derivative(D.B, x, j) for j in eachindex(D.B)]
+function _eval(D::BernsteinDerivative, x, j::Integer)
+    local p = degree(D.B)
+    local T = _evaltype(eltype(D.B), typeof(x))
+    local x̃ = T(x)
+    p * (_bernstein(j-1, p-1, x̃) - _bernstein(j, p-1, x̃))
 end
-function Base.getindex(D::BernsteinDerivative, X::AbstractVector, j::Integer)
-    [_eval_derivative(D.B, x, j) for x in X]
-end
-function Base.getindex(D::BernsteinDerivative, X::AbstractVector, ::Colon)
-    [_eval_derivative(D.B, x, j) for x in X, j in eachindex(D.B)]
-end
-
-Base.adjoint(B::Bernstein) = Derivative(axes(B, 1)) * B

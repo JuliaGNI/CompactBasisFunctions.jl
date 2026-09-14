@@ -1,45 +1,25 @@
 
-import QuadratureRules: chebyshev_nodes
-import OffsetArrays: OffsetArray
-
 """
-Chebyshev polynomial of the first kind on the interval [-1..+1].
+Chebyshev polynomial of the first (`kind = 1`) or second (`kind = 2`) kind on the interval
+[-1..+1].
 
-Evaluated by iterating the three-term recurrence ``T_j = 2x T_{j-1} - T_{j-2}`` upwards.
-The recursive formulation of the same recurrence descends into two subproblems per step and
+Both kinds obey the same three-term recurrence ``\\phi_j = 2x \\phi_{j-1} - \\phi_{j-2}`` and
+differ only in where it starts, ``T_1 = x`` against ``U_1 = 2x`` — the `kind * x` below. It is
+iterated upwards; the recursive formulation descends into two subproblems per step and
 recomputes shared subtrees, which costs `O(φʲ)` evaluations rather than `O(j)`.
 """
-@inline function _chebyshev(::Val{1}, j::Int, x::T) where {T}
+@inline function _chebyshev(::Val{kind}, j::Integer, x::T) where {kind, T}
     j < 0 && return zero(T)
     j == 0 && return one(T)
 
-    local t₂ = one(T)
-    local t₁ = x
+    local p₂ = one(T)
+    local p₁ = kind * x
 
     for _ in 2:j
-        t₂, t₁ = t₁, t₁ * 2x - t₂
+        p₂, p₁ = p₁, p₁ * 2x - p₂
     end
 
-    return t₁
-end
-
-"""
-Chebyshev polynomial of the second kind on the interval [-1..+1].
-
-Evaluated by iterating ``U_j = 2x U_{j-1} - U_{j-2}``, cf. [`_chebyshev`](@ref).
-"""
-@inline function _chebyshev(::Val{2}, j::Int, x::T) where {T}
-    j < 0 && return zero(T)
-    j == 0 && return one(T)
-
-    local u₂ = one(T)
-    local u₁ = 2x
-
-    for _ in 2:j
-        u₂, u₁ = u₁, u₁ * 2x - u₂
-    end
-
-    return u₁
+    return p₁
 end
 
 @doc raw"""
@@ -94,77 +74,48 @@ Otherwise the constructor throws an `InexactError`.
 See also [Chebyshev basis](@ref) for the full discussion, and [`Lagrange`](@ref) for the
 other nodal basis.
 """
-struct Chebyshev{kind, T, BT, XT <: AbstractVector{T}} <: Basis{T}
-    b::BT
-    x::XT
+struct Chebyshev{kind, T} <: NodalBasis{T}
+    x::Vector{T}
 
-    function Chebyshev{kind, T}(n::Int) where {kind, T}
-        p = n-1
+    function Chebyshev{kind, T}(n::Integer) where {kind, T}
         # chebyshev_nodes returns the points on [0,1]; shift_nodes widens integer
-        # element types, so convert back to keep XT <: AbstractVector{T}
-        x = convert(Vector{T}, chebyshev_nodes(T, n, Val(kind)))
-        # evaluated in the wider of T and the argument type, as the derivatives below are.
-        # The conversion precedes the shift onto [-1,1]: 2y-1 rounds in the argument's type,
-        # and widening the rounded result would freeze that error in.
-        b = OffsetArray(
-            [y -> _chebyshev(Val(kind), i, 2 * _evaltype(T, typeof(y))(y) - 1)
-             for i in 0:p], 0:p)
-        new{kind, T, typeof(b), typeof(x)}(b, x)
+        # element types, so convert back to keep the nodes in T
+        new{kind, T}(convert(Vector{T}, chebyshev_nodes(T, n, Val(kind))))
     end
 
-    Chebyshev{kind}(::Type{T}, n::Int) where {kind, T} = Chebyshev{kind, T}(n)
-    Chebyshev{kind}(n::Int) where {kind} = Chebyshev{kind, Float64}(n)
+    Chebyshev{kind}(::Type{T}, n::Integer) where {kind, T} = Chebyshev{kind, T}(n)
+    Chebyshev{kind}(n::Integer) where {kind} = Chebyshev{kind, Float64}(n)
 end
 
-Chebyshev(::Type{T}, n::Int, ::Val{kind}) where {kind, T} = Chebyshev{kind, T}(n)
-Chebyshev(n::Int, ::Val{kind}) where {kind} = Chebyshev(Float64, n, Val(kind))
+Chebyshev(::Type{T}, n::Integer, ::Val{kind}) where {kind, T} = Chebyshev{kind, T}(n)
+Chebyshev(n::Integer, ::Val{kind}) where {kind} = Chebyshev(Float64, n, Val(kind))
 
 const ChebyshevT = Chebyshev{1}
 const ChebyshevU = Chebyshev{2}
 
-(C::Chebyshev)(x::Number, j::Int) = C.b[j](x)
+"""
+The kind of a Chebyshev basis, as the `Val` that the evaluators dispatch on.
+"""
+_kind(::Chebyshev{kind}) where {kind} = Val(kind)
 
-basis(C::Chebyshev) = C.b
-nodes(C::Chebyshev) = C.x
-nbasis(C::Chebyshev) = length(basis(C))
-nnodes(C::Chebyshev) = length(nodes(C))
-order(C::Chebyshev) = nnodes(C)
-degree(C::Chebyshev) = nnodes(C) - 1
+_key(C::Chebyshev{kind}) where {kind} = (Chebyshev{kind}, C.x)
 
-Base.eltype(::Chebyshev{kind, T}) where {kind, T} = T
-Base.eachindex(C::Chebyshev) = eachindex(C.b)
-Base.axes(C::Chebyshev) = (Inclusion(0..1), eachindex(C))
-ContinuumArrays.grid(C::Chebyshev) = nodes(C)
-
-Base.hash(C::Chebyshev{kind}, h::UInt) where {kind} = hash(C.x, hash(kind, h))
-function Base.:(==)(C1::Chebyshev{kind1}, C2::Chebyshev{kind2}) where {kind1, kind2}
-    (C1.x == C2.x && kind1 == kind2)
+function _eval(C::Chebyshev, x, j::Integer)
+    # converted before the shift onto [-1,1], so that 2x-1 is not rounded in the argument's
+    # type and the rounding then widened along with it, cf. `_evaltype`
+    local T = _evaltype(eltype(C), typeof(x))
+    _chebyshev(_kind(C), j, 2 * T(x) - 1)
 end
-function Base.isequal(C1::Chebyshev{kind1, T1}, C2::Chebyshev{
-        kind2, T2}) where {kind1, T1, kind2, T2}
-    (T1 == T2 && C1 == C2)
-end
-Base.isapprox(C1::Chebyshev, C2::Chebyshev; kwargs...) = isapprox(C1.x, C2.x; kwargs...)
-
-Base.getindex(C::Chebyshev, x::Number, j::Int) = C(x, j)
-Base.getindex(C::Chebyshev, x::Number, ::Colon) = [b(x) for b in C.b]
-Base.getindex(C::Chebyshev, X::AbstractVector, j::Int) = C.(X, j)
-Base.getindex(C::Chebyshev, X::AbstractVector, ::Colon) = [b(x) for x in X, b in C.b]
 
 ## Derivative
-
-@simplify *(D::Derivative, C::Chebyshev) = Mul(D, C)
 
 """
     ChebyshevDerivative
 
 The type of `Derivative(axes(b,1)) * b` for a [`Chebyshev`](@ref) basis `b` of either kind,
-equivalently of `b'`.
-
-A lazy product: it stores the basis and evaluates the derivative on indexing. The two kinds
-need different formulas, so the evaluation dispatches on the narrower
-[`ChebyshevTDerivative`](@ref) and [`ChebyshevUDerivative`](@ref). See
-[Derivatives](@ref).
+equivalently of `b'`. The two kinds need different formulas, and
+[`ChebyshevTDerivative`](@ref) and [`ChebyshevUDerivative`](@ref) name them apart. See
+[`PolynomialBasisDerivative`](@ref) and [Derivatives](@ref).
 """
 const ChebyshevDerivative = QMul2{<:Derivative, <:Chebyshev}
 
@@ -173,6 +124,9 @@ const ChebyshevDerivative = QMul2{<:Derivative, <:Chebyshev}
 
 [`ChebyshevDerivative`](@ref) narrowed to the first kind, evaluated through
 ``T_j' = j \\, U_{j-1}``.
+
+The alias names the type. Evaluation dispatches on [`ChebyshevDerivative`](@ref), which
+picks the formula from the kind of the basis it was built from.
 """
 const ChebyshevTDerivative = QMul2{<:Derivative, <:ChebyshevT}
 
@@ -181,6 +135,9 @@ const ChebyshevTDerivative = QMul2{<:Derivative, <:ChebyshevT}
 
 [`ChebyshevDerivative`](@ref) narrowed to the second kind, evaluated through the
 differentiated recurrence rather than the closed form, which is singular at the endpoints.
+
+The alias names the type. Evaluation dispatches on [`ChebyshevDerivative`](@ref), which
+picks the formula from the kind of the basis it was built from.
 """
 const ChebyshevUDerivative = QMul2{<:Derivative, <:ChebyshevU}
 
@@ -188,7 +145,7 @@ const ChebyshevUDerivative = QMul2{<:Derivative, <:ChebyshevU}
 Derivative of the Chebyshev polynomial of the first kind on the interval [-1..+1],
 via ``T_j' = j \\, U_{j-1}``.
 """
-@inline function _chebyshev_derivative(::Val{1}, j::Int, x::T) where {T}
+@inline function _chebyshev_derivative(::Val{1}, j::Integer, x::T) where {T}
     j ≤ 0 && return zero(T)
     return _chebyshev(Val(2), j-1, x) * j
 end
@@ -207,7 +164,7 @@ carried alongside ``U_j`` itself. The closed form
 ``x = \\pm 1``, i.e. at both endpoints of the interval, where the derivative is perfectly
 finite.
 """
-@inline function _chebyshev_derivative(::Val{2}, j::Int, x::T) where {T}
+@inline function _chebyshev_derivative(::Val{2}, j::Integer, x::T) where {T}
     j ≤ 0 && return zero(T)
 
     local u₂ = one(T)      # U_0
@@ -223,38 +180,8 @@ finite.
     return d₁
 end
 
-"""
-Evaluate derivative of Chebyshev polynomial of the first kind on the interval [0..1].
-"""
-function _eval(D::ChebyshevTDerivative, x::DT, i::Int) where {DT}
-    local C = D.B
-    # converted before the shift onto [-1,1], so that 2x-1 is not rounded in the argument's
-    # type and the rounding then widened along with it, cf. `_evaltype`
-    local x̃ = 2 * _evaltype(eltype(C), DT)(x) - 1
-    @boundscheck i ≥ 0 && i < nbasis(C) || throw(BoundsError(C, i))
-    _chebyshev_derivative(Val(1), i, x̃) * 2
+function _eval(D::ChebyshevDerivative, x, j::Integer)
+    # the 2 is the chain rule of the shift onto [0,1]
+    local T = _evaltype(eltype(D.B), typeof(x))
+    _chebyshev_derivative(_kind(D.B), j, 2 * T(x) - 1) * 2
 end
-
-"""
-Evaluate derivative of Chebyshev polynomial of the second kind on the interval [0..1].
-"""
-function _eval(D::ChebyshevUDerivative, x::DT, i::Int) where {DT}
-    local C = D.B
-    # converted before the shift, as in the first-kind derivative above
-    local x̃ = 2 * _evaltype(eltype(C), DT)(x) - 1
-    @boundscheck i ≥ 0 && i < nbasis(C) || throw(BoundsError(C, i))
-    _chebyshev_derivative(Val(2), i, x̃) * 2
-end
-
-Base.getindex(D::ChebyshevDerivative, x::Number, j::Integer) = _eval(D, x, j)
-function Base.getindex(D::ChebyshevDerivative, x::Number, ::Colon)
-    [_eval(D, x, j) for j in eachindex(D.B)]
-end
-function Base.getindex(D::ChebyshevDerivative, X::AbstractVector, j::Integer)
-    [_eval(D, x, j) for x in X]
-end
-function Base.getindex(D::ChebyshevDerivative, X::AbstractVector, ::Colon)
-    [_eval(D, x, j) for x in X, j in eachindex(D.B)]
-end
-
-Base.adjoint(C::Chebyshev) = Derivative(axes(C, 1)) * C
