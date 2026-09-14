@@ -7,7 +7,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Releases 
 not covered here; see the git history for those.
 
 
-## [Unreleased] — targeting 0.4.0
+## [0.4.0]
 
 **This release is breaking.** The internal shape of every basis changes: none of them stores its
 basis functions any more, so each loses the type parameter that described that store, and
@@ -15,6 +15,30 @@ basis functions any more, so each loses the type parameter that described that s
 omits an accessor now gets the standard `MethodError` rather than this package's `ErrorException`.
 One numerical result changes, and it is a fix: a `Legendre` basis evaluated at an argument wider
 than its own element type was accurate only to that element type.
+
+### Breaking Changes
+
+- **Every basis type loses a type parameter.** No basis stores its basis functions any more, so
+  each drops the parameter that described that store, and `Chebyshev` drops a second one besides.
+  `Bernstein` and `Legendre` now hold a single `Int`, and `Lagrange` its nodes, denominators and
+  cached node differences. Code that spells a basis type with its parameters, or reaches into a
+  field, has to be updated; the constructors and the documented interface are unchanged.
+
+- **The generic accessor fallbacks are removed.** `basis`, `nodes`, `nnodes`, `order` and `degree`
+  were methods on `ContinuumArrays.Basis`, which this package does not own. A `Basis` subtype
+  defined elsewhere that does not implement an accessor now raises the ordinary `MethodError`
+  instead of this package's `ErrorException`. Implement the accessor for that type. The modal
+  bases' own message, which names the basis and says it is modal, is unchanged.
+
+- **`Legendre` returns different values at a widened argument.** A `Float64` basis evaluated at a
+  `BigFloat` point was accurate only to `Float64`; it is now correct in the wider type. Values at
+  matching precision are unchanged. A one-node `Lagrange` basis likewise returns its result in
+  the promoted type. Both are fixes, detailed under **Fixed**.
+
+- **`basis(b)` builds its callables on each call** instead of returning a stored array. The
+  returned functions behave as before — `basis(b)[j](x) == b[x,j]` — but the array is new each
+  time, so code that compared the result by identity, or held it expecting a shared object, has
+  to keep its own copy.
 
 ### Added
 
@@ -403,5 +427,6 @@ defined here, the `FastTransforms` dependency is gone, and the lower bounds on J
   `GenericFFT` and `DSP` from the dependency tree.
 
 
-[0.3.1]: https://github.com/JuliaGNI/CompactBasisFunctions.jl/compare/v0.3.0...main
+[0.4.0]: https://github.com/JuliaGNI/CompactBasisFunctions.jl/compare/v0.3.1...main
+[0.3.1]: https://github.com/JuliaGNI/CompactBasisFunctions.jl/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/JuliaGNI/CompactBasisFunctions.jl/compare/v0.2.15...v0.3.0
