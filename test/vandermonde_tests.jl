@@ -31,7 +31,7 @@ import OffsetArrays: OffsetArray
     @test vandermonde_matrix_inverse(z) == [1.0 0.0 0.0; -3.0 4.0 -1.0; 2.0 -4.0 2.0]
 
     # V maps monomial coefficients to values at the nodes, and its inverse maps back. This
-    # is what the two matrices are for, and only their product was asserted before.
+    # is what the two matrices are for.
     c = [1.0, 0.0, 1.0]                                  # 1 + x²
     v = [1.0, 1.25, 2.0]                                 # its values at z
 

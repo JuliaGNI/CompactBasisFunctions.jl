@@ -140,7 +140,11 @@ _key(L::Lagrange) = (Lagrange, L.x)
 # three families number theirs from 0
 Base.eachindex(L::Lagrange) = eachindex(nodes(L))
 
-function _eval(L::Lagrange{T}, x, j::Integer) where {T}
+function _eval(L::Lagrange, x, j::Integer)
+    # the factor that stands in for the omitted one is formed in the arithmetic the other
+    # factors reach by promotion, so a wider argument gives one type and not a union;
+    # the subtraction promotes on its own, so `x` needs no conversion, cf. `_evaltype`
+    local T = _evaltype(eltype(L), typeof(x))
     L.denom[j] * mapreduce(i -> i ≠ j ? (x - L.x[i]) : one(T), *, eachindex(L))
 end
 

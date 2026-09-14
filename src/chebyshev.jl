@@ -124,6 +124,9 @@ const ChebyshevDerivative = QMul2{<:Derivative, <:Chebyshev}
 
 [`ChebyshevDerivative`](@ref) narrowed to the first kind, evaluated through
 ``T_j' = j \\, U_{j-1}``.
+
+The alias names the type. Evaluation dispatches on [`ChebyshevDerivative`](@ref), which
+picks the formula from the kind of the basis it was built from.
 """
 const ChebyshevTDerivative = QMul2{<:Derivative, <:ChebyshevT}
 
@@ -132,6 +135,9 @@ const ChebyshevTDerivative = QMul2{<:Derivative, <:ChebyshevT}
 
 [`ChebyshevDerivative`](@ref) narrowed to the second kind, evaluated through the
 differentiated recurrence rather than the closed form, which is singular at the endpoints.
+
+The alias names the type. Evaluation dispatches on [`ChebyshevDerivative`](@ref), which
+picks the formula from the kind of the basis it was built from.
 """
 const ChebyshevUDerivative = QMul2{<:Derivative, <:ChebyshevU}
 

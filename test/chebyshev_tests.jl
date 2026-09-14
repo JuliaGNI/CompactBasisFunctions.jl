@@ -138,7 +138,7 @@ import OffsetArrays: OffsetArray
     @test nodes(ChebyshevU(2)) == [0.0, 1.0]
 
     # the element type has to represent the nodes, so an integer one throws unless they
-    # happen to be exact — which the docstring claims and nothing checked
+    # happen to be exact
     @test_throws InexactError ChebyshevT(Int, 3)
     @test_throws InexactError ChebyshevU(Int, 3)
     @test nodes(ChebyshevU(Integer, 2)) == [0, 1]

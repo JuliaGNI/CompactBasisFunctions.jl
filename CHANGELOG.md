@@ -58,10 +58,12 @@ than its own element type was accurate only to that element type.
 
 - **Evaluation is asserted to be type stable and allocation-free.** `@inferred` on `b[x,j]` and
   `(d*b)[x,j]`, and a zero-allocation assertion covering those two, `Derivative(axes(b,1)) * b`,
-  the counting accessors and the four comparisons, for every basis. Nothing on the scalar surface
-  allocates; the array-returning indexing forms allocate their result and are not covered. The
-  allocation assertions are skipped where a run forces `--check-bounds=yes`, under which the
-  counts mean nothing.
+  the counting accessors and the four comparisons, for every basis. The stability assertions now
+  also test with a widened argument, `wide = BigFloat(3)/10` under `setprecision(BigFloat, 256)`,
+  ensuring type stability across element-type promotion. Nothing on the scalar surface allocates;
+  the array-returning indexing forms allocate their result and are not covered. The allocation
+  assertions are skipped where a run forces `--check-bounds=yes`, under which the counts mean
+  nothing.
 
 ### Fixed
 
@@ -81,6 +83,23 @@ than its own element type was accurate only to that element type.
   of the promotion fixed in 0.3.1, which moved the recurrences and left the constant factor
   behind. Values at matching precision are unchanged, and the three other families were already
   exact — the suite now asserts it for all four.
+
+- **A `Lagrange` basis evaluated at a wider argument was type-unstable.** The cardinal function is
+  built as the product of factors `(x - L.x[i])` over all nodes except `j`, with the skipped
+  position taking the neutral element `one(T)` in the basis's element type `T`. Every other factor
+  promoted to the wider of the basis's type and the argument's, so inference saw a union:
+
+  ```julia
+  Base.return_types(getindex, (typeof(LagrangeGauß(4)), BigFloat, Int))
+  # before:  Union{Float64, BigFloat}
+  # after:   BigFloat
+  ```
+
+  The fix forms that neutral element in the promoted type, matching the other four families'
+  approach. This is a pre-existing defect, not introduced by this branch — `main` infers the same
+  union. It is fixed here because this branch made the evaluation code shared. A one-node basis now
+  returns its result in the promoted type; for bases with two or more nodes, numeric values are
+  unchanged. This is the same class of promotion fix as the `Legendre` entry above.
 
 ### Changed
 

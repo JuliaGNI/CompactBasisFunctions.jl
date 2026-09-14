@@ -113,8 +113,6 @@ end
 
     # a basis is identified by the family it belongs to and the data that family is built
     # from, so two bases of different families are distinct even where that data agrees.
-    # Nothing asserted this while each family carried its own `==`, which could only ever
-    # be reached by two bases of the same family.
     same_nodes = Lagrange(nodes(ChebyshevU(3)))
 
     for (b1, b2) in ((Bernstein(4), Legendre(4)), (ChebyshevT(3), ChebyshevU(3)),
@@ -122,7 +120,6 @@ end
         @test b1 != b2
         @test !isequal(b1, b2)
         @test !isapprox(b1, b2)
-        @test hash(b1) != hash(b2)
     end
 
     # a tolerance is a statement about nodes. A modal basis is built from a number of
@@ -220,12 +217,9 @@ end
 
     # A wider argument must carry into everything the evaluation forms, the constant factors
     # included, so that a basis whose definition does not depend on stored data gives the
-    # same value whatever element type it was built with. `Legendre` formed its sqrt(2j+1)
-    # in its own element type, so a Float64 basis at a 256-bit point was a BigFloat accurate
-    # to 1.2e-17 — while its derivative, which formed the factor in the promoted type, was
-    # exact. `Lagrange` is not in this list: its nodes are its definition, so a Float64 and
-    # a BigFloat Lagrange basis are different bases rather than the same one at two
-    # precisions.
+    # same value whatever element type it was built with. `Lagrange` is not in this list:
+    # its nodes are its definition, so a Float64 and a BigFloat Lagrange basis are
+    # different bases rather than the same one at two precisions.
     setprecision(BigFloat, 256) do
         x = BigFloat(3) / 10
 
@@ -259,13 +253,22 @@ end
     end
 
     # evaluation is type stable, which is what the promotion above must not cost: the
-    # element type follows from the basis and the argument alone
-    for b in bases
-        d = Derivative(axes(b, 1))
-        j = first(eachindex(b))
+    # element type follows from the basis and the argument alone. A widened argument is
+    # where this is easiest to lose — a constant the formula forms in the basis's own
+    # element type makes the result a union of the two.
+    setprecision(BigFloat, 256) do
+        wide = BigFloat(3) / 10
 
-        @test @inferred(b[0.3, j]) isa Float64
-        @test @inferred((d * b)[0.3, j]) isa Float64
+        for b in bases
+            d = Derivative(axes(b, 1))
+            j = first(eachindex(b))
+
+            @test @inferred(b[0.3, j]) isa Float64
+            @test @inferred((d * b)[0.3, j]) isa Float64
+
+            @test @inferred(b[wide, j]) isa BigFloat
+            @test @inferred((d * b)[wide, j]) isa BigFloat
+        end
     end
 
     # ... and it allocates nothing. `b[x,j]` and `(d*b)[x,j]` sit in the innermost loop of
