@@ -141,11 +141,22 @@ _key(L::Lagrange) = (Lagrange, L.x)
 Base.eachindex(L::Lagrange) = eachindex(nodes(L))
 
 function _eval(L::Lagrange, x, j::Integer)
-    # the factor that stands in for the omitted one is formed in the arithmetic the other
-    # factors reach by promotion, so a wider argument gives one type and not a union;
-    # the subtraction promotes on its own, so `x` needs no conversion, cf. `_evaltype`
+    # the product starts from a one in the arithmetic the factors reach by promotion, so a
+    # wider argument gives one type and not a union; the subtraction promotes on its own,
+    # so `x` needs no conversion, cf. `_evaltype`
     local T = _evaltype(eltype(L), typeof(x))
-    L.denom[j] * mapreduce(i -> i ≠ j ? (x - L.x[i]) : one(T), *, eachindex(L))
+    local p::T = one(T)
+
+    # the cardinal function of node j is the product over every other node. The loop is
+    # written out rather than folded: a closure that captures `T` is inferrable as `Any`
+    # on the 1.10 floor, whatever the argument type
+    for i in eachindex(L)
+        if i ≠ j
+            p *= x - L.x[i]
+        end
+    end
+
+    return L.denom[j] * p
 end
 
 ## Derivative
