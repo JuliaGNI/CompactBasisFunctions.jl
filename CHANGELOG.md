@@ -7,6 +7,16 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Releases 
 not covered here; see the git history for those.
 
 
+## [0.4.1]
+
+### Changed
+
+- **`ContinuumArrays` 0.21 is now allowed.** The `[compat]` entry becomes
+  `0.18, 0.19, 0.20, 0.21`. This is a compat widening only: no source file changes, and the
+  package's behaviour is identical under either version. The full CI matrix passes with the new
+  bound in place.
+
+
 ## [0.4.0]
 
 **This release is breaking.** The internal shape of every basis changes: none of them stores its
