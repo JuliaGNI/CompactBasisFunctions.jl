@@ -7,6 +7,13 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Releases 
 not covered here; see the git history for those.
 
 
+## [Unreleased]
+
+### Changed
+
+- **Test suite reorganized for maintainability.** Test dependencies move to a dedicated `test/Project.toml`; test files mirror the source structure with `basis.jl`, `bernstein.jl`, `chebyshev.jl`, `lagrange.jl`, `legendre.jl`, `vandermonde_matrix.jl`, and `quality/aqua.jl`; each test file is self-contained with its own `using` statements and fixed seed; `runtests.jl` now uses `SafeTestsets` with group filtering (`core` and `slow` groups) from command-line arguments; docstring tests are now collected in a dedicated `test/quality/doctests.jl` in the slow group.
+
+
 ## [0.4.1]
 
 ### Changed

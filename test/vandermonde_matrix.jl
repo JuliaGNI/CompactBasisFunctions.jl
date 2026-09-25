@@ -1,3 +1,10 @@
+using CompactBasisFunctions
+using Random
+using Test
+
+# a fixed seed, so that a failure is reproducible and an ill-conditioned draw cannot pass on
+# one run and fail on the next
+Random.seed!(0x6a1d3f2e)
 
 import CompactBasisFunctions: vandermonde_matrix, vandermonde_matrix_inverse
 import LinearAlgebra: I
