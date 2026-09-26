@@ -1,3 +1,10 @@
+using CompactBasisFunctions
+using Random
+using Test
+
+# a fixed seed, so that a failure is reproducible
+Random.seed!(0x6a1d3f2e)
+
 import ContinuumArrays: apply, MulQuasiMatrix
 import OffsetArrays: OffsetArray
 import QuadratureRules: gauss_legendre_nodes

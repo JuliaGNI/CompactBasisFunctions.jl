@@ -1,16 +1,16 @@
-using CompactBasisFunctions
-using Random
-using Test
+using SafeTestsets
 
-# several tests draw their evaluation points with rand(); seed so that a failure is
-# reproducible, and so that the Vandermonde tests cannot hit an ill-conditioned draw
-# on one run and pass on the next
-Random.seed!(0x6a1d3f2e)
+const GROUPS = isempty(ARGS) ? ["core", "slow"] : ARGS
 
-include("aqua_tests.jl")
-include("vandermonde_tests.jl")
-include("basis_tests.jl")
-include("bernstein_tests.jl")
-include("chebyshev_tests.jl")
-include("lagrange_tests.jl")
-include("legendre_tests.jl")
+if "core" in GROUPS
+    @safetestset "Aqua" include("quality/aqua.jl")
+    @safetestset "Vandermonde matrix" include("vandermonde_matrix.jl")
+    @safetestset "Basis" include("basis.jl")
+    @safetestset "Bernstein" include("bernstein.jl")
+    @safetestset "Chebyshev" include("chebyshev.jl")
+    @safetestset "Lagrange" include("lagrange.jl")
+    @safetestset "Legendre" include("legendre.jl")
+end
+if "slow" in GROUPS
+    @safetestset "Doctests" include("quality/doctests.jl")
+end

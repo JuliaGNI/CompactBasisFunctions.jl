@@ -1,3 +1,5 @@
+using CompactBasisFunctions
+using Test
 
 import CompactBasisFunctions: Basis, nodes, nnodes
 import ContinuumArrays
