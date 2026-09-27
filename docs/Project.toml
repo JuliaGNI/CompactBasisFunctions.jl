@@ -5,6 +5,7 @@ DocumenterCitations = "daee34ce-89f3-4625-b898-19384cb65244"
 QuadratureRules = "a08977f5-a20d-4b99-b11f-f5ea535e0575"
 
 [compat]
+CompactBasisFunctions = "0.4.1"
 Documenter = "1"
 DocumenterCitations = "1"
 QuadratureRules = "0.2"
