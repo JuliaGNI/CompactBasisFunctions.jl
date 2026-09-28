@@ -36,5 +36,5 @@ if JET_WORKS
         @test isempty(JET.get_reports(JET.report_opt(isapprox, (B, B); target_modules = m)))
     end
 else
-    @test_skip "JET does not work on Julia $VERSION" # issue #31
+    @test_skip "JET does not work on Julia $VERSION" # aviatesk/JET.jl#681
 end
