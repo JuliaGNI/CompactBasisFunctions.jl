@@ -20,6 +20,16 @@ fixed; the fix goes in `CHANGELOG.md`.
 - kind: upstream
 - found: 2026-09-13
 
+### K4 · Revise prints EMFILE errors in the test log
+
+- location: `test/quality/jet.jl:8`
+- evidence: JET 0.12 loads Revise, and Revise's file watcher runs out of file handles. On Julia
+  1.13.1, `grep -c 'UNHANDLED TASK ERROR.*EMFILE'` counts 5 blocks in the full-run log of
+  `run-tests.jl <repository> full` on the branch of PR #32, and 0 in the same run on
+  `origin/main`. These blocks are not test failures, and the test totals do not change.
+- kind: upstream
+- found: PR #32
+
 ## Tests
 
 ### K2 · `quality/jet.jl` does not see an unstable return value in an entry point's own frame
