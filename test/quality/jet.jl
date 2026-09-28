@@ -25,7 +25,10 @@ if JET_WORKS
 
         @test isempty(JET.get_reports(JET.report_opt(getindex, (B, Float64, Int); target_modules = m)))
         @test isempty(JET.get_reports(JET.report_opt(getindex, (DB, Float64, Int); target_modules = m)))
-        @test isempty(JET.get_reports(JET.report_opt(*, (D, B); target_modules = m)))
+        # the `@simplify` body is inlined, and its one runtime dispatch is in the
+        # `ArrayLayouts.Mul` constructor it calls, so this line keeps the frames it calls too
+        @test isempty(JET.get_reports(JET.report_opt(
+            *, (D, B); target_modules = (JET.AnyFrameModule(CompactBasisFunctions),))))
         @test isempty(JET.get_reports(JET.report_opt(nbasis, (B,); target_modules = m)))
         @test isempty(JET.get_reports(JET.report_opt(order, (B,); target_modules = m)))
         @test isempty(JET.get_reports(JET.report_opt(degree, (B,); target_modules = m)))
