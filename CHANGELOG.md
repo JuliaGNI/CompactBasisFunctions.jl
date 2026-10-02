@@ -7,7 +7,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Releases 
 not covered here; see the git history for those.
 
 
-## [Unreleased]
+## [0.4.2]
 
 ### Changed
 
