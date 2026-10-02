@@ -1,6 +1,6 @@
 name = "CompactBasisFunctions"
 uuid = "a09551c4-f815-4143-809e-dd1986753ba7"
-version = "0.4.1"
+version = "0.4.2"
 authors = ["Michael Kraus"]
 
 [deps]
@@ -13,9 +13,9 @@ StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
 [compat]
 ContinuumArrays = "0.18, 0.19, 0.20, 0.21"
-GeometricBase = "0.14.8"
+GeometricBase = "0.15.0"
 LinearAlgebra = "1"
 OffsetArrays = "1"
-QuadratureRules = "0.2"
+QuadratureRules = "0.2.2"
 StaticArrays = "1"
-julia = "1.10"
+julia = "1.11"

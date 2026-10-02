@@ -149,7 +149,7 @@ function _eval(L::Lagrange, x, j::Integer)
 
     # the cardinal function of node j is the product over every other node. The loop is
     # written out rather than folded: a closure that captures `T` is inferrable as `Any`
-    # on the 1.10 floor, whatever the argument type
+    # on Julia 1.11 and earlier, whatever the argument type
     for i in eachindex(L)
         if i ≠ j
             p *= x - L.x[i]
