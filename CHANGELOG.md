@@ -7,6 +7,13 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Releases 
 not covered here; see the git history for those.
 
 
+## [Unreleased]
+
+### Changed
+
+- **CI uploads coverage from the `Julia 1 - ubuntu-latest` job.** It no longer uploads from `Julia min`, and a test job saves the Julia cache only when it succeeds.
+
+
 ## [0.4.2]
 
 ### Changed
