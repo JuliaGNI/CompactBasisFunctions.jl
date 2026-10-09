@@ -12,6 +12,6 @@ if "core" in GROUPS
     @safetestset "Lagrange" include("lagrange.jl")
     @safetestset "Legendre" include("legendre.jl")
 end
-if "slow" in GROUPS
+if "doctests" in GROUPS
     @safetestset "Doctests" include("quality/doctests.jl")
 end

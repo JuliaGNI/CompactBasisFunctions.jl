@@ -12,6 +12,7 @@ not covered here; see the git history for those.
 ### Changed
 
 - **CI uploads coverage from the `Julia 1 - ubuntu-latest` job.** It no longer uploads from `Julia min`, and a test job saves the Julia cache only when it succeeds.
+- `Pkg.test()` no longer runs the doctests. `test/quality/doctests.jl` is now the group `doctests`, which an empty `ARGS` does not run; `Pkg.test(test_args = ["doctests"])` runs it. In CI the Doctests job stays their runner, so the test matrix no longer runs them a second time.
 
 
 ## [0.4.2]
