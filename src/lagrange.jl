@@ -145,16 +145,9 @@ function _eval(L::Lagrange, x, j::Integer)
     # wider argument gives one type and not a union; the subtraction promotes on its own,
     # so `x` needs no conversion, cf. `_evaltype`
     local T = _evaltype(eltype(L), typeof(x))
-    local p::T = one(T)
 
-    # the cardinal function of node j is the product over every other node. The loop is
-    # written out rather than folded: a closure that captures `T` is inferrable as `Any`
-    # on Julia 1.11 and earlier, whatever the argument type
-    for i in eachindex(L)
-        if i ≠ j
-            p *= x - L.x[i]
-        end
-    end
+    # the cardinal function of node j is the product over every other node
+    p = foldl((p, i) -> i == j ? p : p * (x - L.x[i]), eachindex(L); init = one(T))
 
     return L.denom[j] * p
 end
