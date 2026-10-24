@@ -280,8 +280,8 @@ end
     # allocate their result and are not covered.
     #
     # Asserted only where bounds checking is left at `auto`. A run that forces
-    # `--check-bounds=yes`, as `Pkg.test()` does, inflates allocation counts and would make
-    # any figure here meaningless.
+    # `--check-bounds=yes`, as `Pkg.test()` does up to Julia 1.12, inflates allocation
+    # counts and would make any figure here meaningless.
     if Base.JLOptions().check_bounds == 0
         for b in bases
             a = scalar_allocations(b)
