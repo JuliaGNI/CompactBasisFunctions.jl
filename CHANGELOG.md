@@ -11,7 +11,7 @@ not covered here; see the git history for those.
 
 ### Changed
 
-- **Julia 1.12 is the floor** (`[compat] julia = "1.12"`, from 1.11). A breaking change under this package's pre-1.0 convention: a caller on Julia 1.11 can no longer install this version. The product over the other nodes in the evaluation of a `Lagrange` basis is a `foldl` again and no longer a written-out loop: the loop was there because a closure capturing the element type was inferred as `Any` on Julia 1.11 and earlier, and on Julia 1.12 the folded form infers and passes the type-stability tests of `test/basis.jl`.
+- **Julia 1.12 is the floor** (`[compat] julia = "1.12"`, from 1.11). A breaking change under this package's pre-1.0 convention: a caller on Julia 1.11 can no longer install this version. The product over the other nodes in the evaluation of a `Lagrange` basis is a `foldl` and no longer a written-out loop: the loop worked around a closure capturing the element type being inferred as `Any` on Julia 1.10, and on Julia 1.12 the folded form infers and passes the type-stability tests of `test/basis.jl`.
 - **CI uploads coverage from the `Julia 1 - ubuntu-latest` job.** It no longer uploads from `Julia min`, and a test job saves the Julia cache only when it succeeds.
 - `Pkg.test()` no longer runs the doctests. `test/quality/doctests.jl` is now the group `doctests`, which an empty `ARGS` does not run; `Pkg.test(test_args = ["doctests"])` runs it. In CI the Doctests job stays their runner, so the test matrix no longer runs them a second time.
 
