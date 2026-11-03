@@ -7,6 +7,13 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Releases 
 not covered here; see the git history for those.
 
 
+## [Unreleased]
+
+### Changed
+
+- **The floors rise so that the Downgrade job resolves and passes at them.** In the root `Project.toml`, `StaticArrays` becomes `"1.5.17"`, because StaticArrays below 1.5.17 allows only Julia up to 1.10. In `test/Project.toml`, `Aqua` becomes `"0.8.14"`, because Aqua below 0.8.14 reads the method table field `Core.TypeName.mt` that Julia 1.12 removes, and its piracy test errors. `JET` gets the bound `"0.10, 0.11, 0.12"`: 0.10 is the first JET series that allows Julia 1.12.
+
+
 ## [0.4.3] — 2026-10-24
 
 ### Changed
